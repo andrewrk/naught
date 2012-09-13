@@ -1,0 +1,20 @@
+{
+  "name": "naught",
+  "version": "0.0.0",
+  "description": "zero downtime deployment for your node.js server",
+  "scripts": {
+    "dev": "npm install && coke watch"
+  },
+  "bin": {
+    "naught": "./lib/main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/superjoe30/naught.git"
+  },
+  "author": "Andrew Kelley",
+  "license": "BSD",
+  "devDependencies": {
+    "coco": "~0.8.1"
+  }
+}

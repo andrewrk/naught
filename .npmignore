@@ -1,0 +1,4 @@
+# shared with .gitignore
+/node_modules
+# different from .gitignore
+/src

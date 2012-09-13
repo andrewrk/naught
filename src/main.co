@@ -1,0 +1,118 @@
+`#!/usr/bin/env node`
+!function printUsage
+  console.log "Usage:"
+  for name, cmd in cmds
+    console.log "\n#{cmd.help}\n"
+
+!function startScript (options, script, argv)
+  {spawn} = require('child_process')
+  path = require('path')
+
+  log_naught = fs.createWriteStream options.log,
+    flags: 'a'
+    encoding: 'utf8'
+  log_stderr = fs.createWriteStream options.stderr,
+    flags: 'a'
+    encoding: 'utf8'
+  log_stdout = fs.createWriteStream options.stdout,
+    flags: 'a'
+    encoding: 'utf8'
+
+  !function log (str)
+    log_naught.write str
+    process.stdout.write str
+
+  child = spawn(process.execPath, [
+    path.join(__dirname, "wrapper.js"),
+    options.'worker-count',
+    options.cwd,
+    script,
+  ].concat(argv), {
+    env: process.env
+    stdio: ['inherit', 'pipe', 'pipe']
+    detached: true
+    cwd: options.cwd
+  })
+  child.stdout.pipe(log_stdout)
+  child.stderr.pipe(log_stderr)
+  fs.writeFile options.pidfile, child.pid.toString(), \utf8, !(err) ->
+    if err then log "Error: Unable to write pidfile to #{options.pidfile}.\n#{err.stack}\n"
+
+cmds =
+  start:
+    help: """
+      naught start [options] server.js [script-options]
+
+          Available options and their defaults:
+
+          --worker-count 1
+          --pidfile naught.pid
+          --log naught.log
+          --stdout stdout.log
+          --stderr stderr.log
+          --max-log-size 10485760
+          --cwd .
+      """
+    fn: (argv) ->
+      # parse options
+      options =
+        'worker-count': '1'
+        'pidfile': 'naught.pid'
+        'log': 'naught.log'
+        'stdout': 'stdout.log'
+        'stderr': 'stderr.log'
+        'max-log-size': '10485760'
+        'cwd': process.cwd()
+      while argv.length
+        arg = argv.shift()
+        if arg.indexOf('--') is 0
+          options[arg.substring(2)] = argv.shift()
+        else
+          script = arg
+          break
+      if script?
+        options.'worker-count' = parseInt(options.'worker-count')
+        options.'max-log-size' = parseInt(options.'max-log-size')
+        startScript(options, script, argv)
+        true
+      else
+        false
+  stop:
+    help: """
+    naught stop [pidfile.pid]
+
+        Stops the running server which created the pidfile.
+    """
+    fn: (argv) -> false
+  deploy:
+    help: """
+    naught deploy [options] [pidfile.pid]
+
+        Replaces workers with new workers using new code and the environment
+        variables from this command. Naught does this one worker at a time,
+        and waits to kill a worker until after the replacement is online.
+    """
+    fn: (argv) -> false
+  'deploy-abort':
+    help: """
+    naught deploy-abort [pidfile.pid]
+    """
+    fn: (argv) -> false
+  help:
+    help: """
+    naught help [cmd]
+
+        Displays help for cmd
+    """
+    fn: (argv) ->
+      if argv.length is 1 and (cmd = cmds[argv[0]])?
+        console.log(cmd.help)
+      else
+        printUsage()
+      true
+
+if (cmd = cmds[process.argv[2]])?
+  if not cmd.fn(process.argv.slice(3))
+    console.log(cmd.help)
+else
+  printUsage()

@@ -1,0 +1,4 @@
+# shared with .npmignore
+/node_modules
+# different from .npmignore
+/lib

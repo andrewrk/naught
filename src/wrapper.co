@@ -1,0 +1,47 @@
+const
+  cluster = require('cluster')
+  assert = require('assert')
+
+argv = process.argv.slice(2)
+worker_count = parseInt(argv.shift())
+cwd = argv.shift()
+script = argv.shift()
+cluster.setupMaster do
+  exec: script
+  args: [cwd].concat(argv)
+
+workers = (cluster.fork() for i from 0 til worker_count)
+new_workers = []
+waiting_for = null
+
+!function onNewWorkerOnline
+  console.debug "#{new_workers.length} new workers online. Disconnecting 1 old worker."
+  old_worker = workers.shift()
+  old_worker.send \shutdown
+  waiting_for := \old
+  old_worker.once \exit, !->
+    console.debug "Old worker exited. #{workers.length} old workers online."
+    if workers.length is 0
+      assert new_workers.length is worker_count
+      waiting_for := null
+      [workers, new_workers] = [new_workers, workers]
+      console.debug "Ready for new deployment."
+    else
+      startNewWorker()
+
+!function startNewWorker
+  # replace workers one at a time
+  console.debug "Spawning 1 new worker."
+  new_workers.push new_worker = cluster.fork()
+  waiting_for := \new
+  new_worker.once \online, onNewWorkerOnline
+
+process.on \SIGUSR1, !->
+  if waiting_for?
+    console.error "Cannot deploy - already in progress."
+  else
+    startNewWorker()
+
+# cancel ongoing deployment
+process.on \SIGUSR2, !->
+  ...

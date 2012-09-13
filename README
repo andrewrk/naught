@@ -1,0 +1,63 @@
+features:
+
+ * zero downtime code hot-swapping
+   - not done yet
+ * ability to change environment variables of workers with zero downtime
+   - not done yet
+ * resuscitation - when a worker dies it is restarted
+   - not done yet
+ * redirect worker stdout and stderr to rotating log files
+   - not done yet
+ * runs as daemon, providing ability to start and stop
+   - not done yet
+
+usage:
+
+    To use naught, your node.js server has 2 requirements.
+    
+    1. Once the server is fully booted and is readily accepting connections,
+
+       process.send('online');
+
+    2. Listen to the 'shutdown' message and shutdown gracefully. This message
+       is emitted after there is already a newer instance of your server
+       online and taking care of business:
+
+       process.on('message', function(message) {
+           if (message === 'shutdown') {
+               performCleanup();
+               process.exit(0);
+           }
+       }
+
+    naught start [options] server.js [script-options]
+
+        Available options and their defaults:
+
+        --worker-count 1
+        --pidfile naught.pid
+        --log naught.log
+        --stdout stdout.log
+        --stderr stderr.log
+        --max-log-size 10485760
+        --cwd .
+
+    naught stop [pidfile.pid]
+
+        Stops the running server which created the pidfile.
+
+    naught deploy [options] [pidfile.pid]
+
+        Replaces workers with new workers using new code and the environment
+        variables from this command. Naught does this one worker at a time,
+        and waits to kill a worker until after the replacement is online.
+
+    naught deploy-abort [pidfile.pid]
+
+installation:
+
+    $ sudo npm install -g naught
+
+developing:
+
+    $ npm run dev
