@@ -1,4 +1,8 @@
 `#!/usr/bin/env node`
+
+function wait (seconds, cb)
+  setTimeout(cb, seconds * 1000)
+
 !function printUsage
   console.log "Usage:"
   for name, cmd in cmds
@@ -38,20 +42,39 @@
   fs.writeFile options.pidfile, child.pid.toString(), \utf8, !(err) ->
     if err then log "Error: Unable to write pidfile to #{options.pidfile}.\n#{err.stack}\n"
 
+!function stopScript (options, pidfile)
+  fs.readFile pidfile, \utf8, !(err, data) ->
+    pid = parseInt(data)
+    process.kill(pid, 'SIGTERM')
+    wait options.timeout, !->
+      process.kill(pid, 'SIGKILL')
+
+function chompArgv(obj, argv)
+  while argv.length
+    arg = argv.shift()
+    if arg.indexOf('--') is 0
+      obj[arg.substring(2)] = argv.shift()
+    else
+      return arg
+  null
+
 cmds =
   start:
     help: """
-      naught start [options] server.js [script-options]
+    naught start [options] server.js [script-options]
 
-          Available options and their defaults:
+        Starts server.js as a daemon passing script-options as command
+        line arguments.
 
-          --worker-count 1
-          --pidfile naught.pid
-          --log naught.log
-          --stdout stdout.log
-          --stderr stderr.log
-          --max-log-size 10485760
-          --cwd .
+        Available options and their defaults:
+
+        --worker-count 1
+        --pidfile naught.pid
+        --log naught.log
+        --stdout stdout.log
+        --stderr stderr.log
+        --max-log-size 10485760
+        --cwd .
       """
     fn: (argv) ->
       # parse options
@@ -63,13 +86,7 @@ cmds =
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
         'cwd': process.cwd()
-      while argv.length
-        arg = argv.shift()
-        if arg.indexOf('--') is 0
-          options[arg.substring(2)] = argv.shift()
-        else
-          script = arg
-          break
+      script = chompArgv(options, argv)
       if script?
         options.'worker-count' = parseInt(options.'worker-count')
         options.'max-log-size' = parseInt(options.'max-log-size')
@@ -79,11 +96,29 @@ cmds =
         false
   stop:
     help: """
-    naught stop [pidfile.pid]
+    naught stop [options] [pidfile.pid]
 
         Stops the running server which created the pidfile.
+        Uses `naught.pid` by default.
+
+        This sends SIGTERM to the process and waits for timeout, then
+        sends SIGKILL if the process has not already exited.
+
+        Available options and their defaults:
+
+            --timeout 5
     """
-    fn: (argv) -> false
+    fn: (argv) ->
+      options =
+        timeout: '5'
+      pidfile = chompArgv(options, argv) or 'naught.pid'
+      if argv.length is 0
+        options.timeout = parseFloat(options.timeout)
+        stopScript(options, pidfile)
+        true
+      else
+        false
+
   deploy:
     help: """
     naught deploy [options] [pidfile.pid]
