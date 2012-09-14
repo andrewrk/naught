@@ -1,5 +1,8 @@
 `#!/usr/bin/env node`
 
+const
+  fs = require('fs')
+  assert = require('assert')
 const DEFAULT_PIDFILE = 'naught.pid'
 
 function wait (seconds, cb)
@@ -14,6 +17,15 @@ function chompArgv(obj, argv)
       return arg
   null
 
+!function readPid(pidfile, cb)
+  fs.readFile pidfile, \utf8, !(err, data) ->
+    assert.ifError err
+    pid = parseInt(data)
+    if isNaN(pid)
+      console.error "Invalid pid in pidfile: #{pidfile}"
+      process.exit(1)
+    cb(pid)
+
 !function printUsage
   console.log "Usage:"
   for name, cmd in cmds
@@ -23,51 +35,46 @@ function chompArgv(obj, argv)
   {spawn} = require('child_process')
   path = require('path')
 
-  log_naught = fs.createWriteStream options.log,
-    flags: 'a'
-    encoding: 'utf8'
-  log_stderr = fs.createWriteStream options.stderr,
-    flags: 'a'
-    encoding: 'utf8'
-  log_stdout = fs.createWriteStream options.stdout,
-    flags: 'a'
-    encoding: 'utf8'
+  fs.stat options.pidfile, !(err, stats) ->
+    unless err?code is \ENOENT
+      console.error("pidfile #{options.pidfile} already exists.")
+      console.error("Stop the old server before starting a new one.")
+      return
+    child = spawn(process.execPath, [
+      path.join(__dirname, "daemon.js"),
+      options.'worker-count',
+      options.pidfile,
+      options.log,
+      options.stderr,
+      options.stdout,
+      script,
+    ].concat(argv), {
+      env: process.env
+      stdio: ['ignore', 'ignore', 'ignore']
+      detached: true
+      cwd: options.cwd
+    })
+    child.unref()
 
-  !function log (str)
-    log_naught.write str
-    process.stdout.write str
-
-  child = spawn(process.execPath, [
-    path.join(__dirname, "wrapper.js"),
-    options.'worker-count',
-    options.cwd,
-    script,
-  ].concat(argv), {
-    env: process.env
-    stdio: ['inherit', 'pipe', 'pipe']
-    detached: true
-    cwd: options.cwd
-  })
-  child.stdout.pipe(log_stdout)
-  child.stderr.pipe(log_stderr)
-  fs.writeFile options.pidfile, child.pid.toString(), \utf8, !(err) ->
-    if err then log "Error: Unable to write pidfile to #{options.pidfile}.\n#{err.stack}\n"
 
 !function stopScript (options, pidfile)
-  fs.readFile pidfile, \utf8, !(err, data) ->
-    pid = parseInt(data)
-    process.kill(pid, 'SIGTERM')
-    wait options.timeout, !->
-      process.kill(pid, 'SIGKILL')
+  readPid pidfile, !(pid) ->
+    try
+      process.kill(pid, 'SIGTERM')
+    catch e
+      if e.code is \ESRCH
+        console.error("Warning: no process killed with pid #pid.")
+      else
+        throw e
+    finally
+      fs.unlink(pidfile)
 
 !function deploy (options, pidfile)
-  fs.readFile pidfile, \utf8, !(err, data) ->
-    pid = parseInt(data)
+  readPid pidfile, !(pid) ->
     process.kill(pid, 'SIGUSR1')
 
 !function deployAbort (pidfile)
-  fs.readFile pidfile, \utf8, !(err, data) ->
-    pid = parseInt(data)
+  readPid pidfile, !(pid) ->
     process.kill(pid, 'SIGUSR2')
 
 cmds =
