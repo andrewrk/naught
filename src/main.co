@@ -3,7 +3,7 @@
 const
   fs = require('fs')
   assert = require('assert')
-const DEFAULT_PIDFILE = 'naught.pid'
+const DEFAULT_PIDFILE = 'naught-pid.json'
 
 function wait (seconds, cb)
   setTimeout(cb, seconds * 1000)
@@ -17,17 +17,29 @@ function chompArgv(obj, argv)
       return arg
   null
 
-!function readPid(pidfile, cb)
+!function readPids (pidfile, cb)
   fs.readFile pidfile, \utf8, !(err, data) ->
-    assert.ifError err
-    pid = parseInt(data)
-    if isNaN(pid)
-      console.error "Invalid pid in pidfile: #{pidfile}"
+    if err?code is \ENOENT
+      console.log "server not running"
       process.exit(1)
-    cb(pid)
+      return
+    assert.ifError err
+    try
+      pids = JSON.parse(data)
+    catch
+      console.error "Invalid pidfile: #{pidfile}"
+      process.exit(1)
+    cb(pids)
+
+!function getDaemonMessages (socket_path, cbs)
+  net = require('net')
+  socket = net.connect socket_path, cbs.ready
+  socket.setEncoding \utf8
+  socket.on \data, !(data) ->
+    msg = JSON.parse(data)
+    cbs.event?(msg)
 
 !function printUsage
-  console.log "Usage:"
   for name, cmd in cmds
     console.log "\n#{cmd.help}\n"
 
@@ -47,10 +59,11 @@ function chompArgv(obj, argv)
       options.log,
       options.stderr,
       options.stdout,
+      options.tmp,
       script,
     ].concat(argv), {
       env: process.env
-      stdio: \ignore
+      stdio: \inherit
       detached: true
       cwd: options.cwd
     })
@@ -58,24 +71,41 @@ function chompArgv(obj, argv)
 
 
 !function stopScript (options, pidfile)
-  readPid pidfile, !(pid) ->
+  readPids pidfile, !(pids) ->
     try
-      process.kill(pid, 'SIGTERM')
+      process.kill(pids.master, 'SIGTERM')
     catch e
       if e.code is \ESRCH
-        console.error("Warning: no process killed with pid #pid.")
+        console.error("No process killed with pid #{pids.master}.")
+        console.error("`rm #{pidfile}` manually after ensuring your server is not already running.")
       else
         throw e
-    finally
-      fs.unlink(pidfile)
 
 !function deploy (options, pidfile)
-  readPid pidfile, !(pid) ->
-    process.kill(pid, 'SIGUSR1')
+  readPids pidfile, !(pids) ->
+    getDaemonMessages pids.socket,
+      ready: !->
+        process.kill(pids.master, 'SIGUSR1')
+      event: !(msg) ->
+        switch msg.event
+          case \ErrorDeployInProgress
+            console.log "There is deploy already in progress. Things you can do:"
+            console.log "1. monitor #{pids.log.naught}"
+            console.log "2. abort the deploy. see `naught help deploy-abort`"
+            process.exit(1)
+          default
+            console.log "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
 
 !function deployAbort (pidfile)
-  readPid pidfile, !(pid) ->
-    process.kill(pid, 'SIGUSR2')
+  readPids pidfile, !(pids) ->
+    getDaemonMessages pids.socket,
+      ready: !-> process.kill(pids.master, 'SIGUSR2')
+      event: !(msg) ->
+        console.log "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
+
+!function displayStatus (pidfile)
+  readPids pidfile, !(pids) ->
+    console.log "#{pids.daemon} #{pids.master} #{pids.script}"
 
 cmds =
   start:
@@ -94,6 +124,7 @@ cmds =
         --stderr stderr.log
         --max-log-size 10485760
         --cwd .
+        --tmp /tmp
       """
     fn: (argv) ->
       # parse options
@@ -105,6 +136,7 @@ cmds =
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
         'cwd': process.cwd()
+        'tmp': '/tmp'
       script = chompArgv(options, argv)
       if script?
         options.'worker-count' = parseInt(options.'worker-count')
@@ -115,7 +147,7 @@ cmds =
         false
   stop:
     help: """
-    naught stop [options] [pidfile.pid]
+    naught stop [options] [pidfile]
 
         Stops the running server which created the pidfile.
         Uses `#DEFAULT_PIDFILE` by default.
@@ -138,9 +170,22 @@ cmds =
       else
         false
 
+  status:
+    help: """
+    naught status [pidfile]
+
+        Displays whether a server is running or not.
+        Uses `#DEFAULT_PIDFILE` by default.
+    """
+    fn: (argv) ->
+      return false if argv.length > 1
+      pidfile = argv.0 or DEFAULT_PIDFILE
+      displayStatus(pidfile)
+      true
+
   deploy:
     help: """
-    naught deploy [options] [pidfile.pid]
+    naught deploy [options] [pidfile]
 
         Replaces workers with new workers using new code and optionally
         the environment variables from this command. Naught does this one
@@ -164,7 +209,7 @@ cmds =
         false
   'deploy-abort':
     help: """
-    naught deploy-abort [pidfile.pid]
+    naught deploy-abort [pidfile]
 
         Aborts a hanging deploy. A hanging deploy happens when a new worker
         fails to emit the 'online' message, or when an old worker fails

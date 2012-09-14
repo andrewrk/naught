@@ -2,22 +2,25 @@ const
   fs = require('fs')
   path = require('path')
   {spawn} = require('child_process')
+  net = require('net')
+  assert = require('assert')
 
 argv = process.argv.slice(2)
 worker_count = argv.shift()
 pidfile = argv.shift()
-log_naught = argv.shift()
-log_stderr = argv.shift()
-log_stdout = argv.shift()
+log_naught_path = argv.shift()
+log_stderr_path = argv.shift()
+log_stdout_path = argv.shift()
+tmp = argv.shift()
 script = argv.shift()
 
-log_naught = fs.createWriteStream log_naught,
+log_naught = fs.createWriteStream log_naught_path,
   flags: 'a'
   encoding: 'utf8'
-log_stderr = fs.createWriteStream log_stderr,
+log_stderr = fs.createWriteStream log_stderr_path,
   flags: 'a'
   encoding: 'utf8'
-log_stdout = fs.createWriteStream log_stdout,
+log_stdout = fs.createWriteStream log_stdout_path,
   flags: 'a'
   encoding: 'utf8'
 
@@ -25,20 +28,60 @@ log_stdout = fs.createWriteStream log_stdout,
   log_naught.write str
   process.stdout.write str
 
-child = spawn(process.execPath, [
-  path.join(__dirname, "master.js"),
-  worker_count,
-  script,
-].concat(argv), {
-  env: process.env
-  stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
-  cwd: process.cwd()
-})
-
-child.on \message, !(message) ->
+!function onMessage (message)
   log_naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}\n")
+  socket?write JSON.stringify(message)
 
-child.stdout.pipe(log_stdout)
-child.stderr.pipe(log_stderr)
-fs.writeFile pidfile, child.pid.toString(), \utf8, !(err) ->
-  if err then log "Error: Unable to write pidfile to #{pidfile}.\n#{err.stack}\n"
+!function tryUnlink (file)
+  try
+    fs.unlinkSync file
+  catch e
+    console.error "Unable to remove #{file}.\n#{e.stack}"
+
+function getTempName
+  now = new Date()
+  "#{now.getYear()}-#{now.getMonth()}-#{now.getDay()}-#{process.pid}-#{(Math.random() * 0x100000000 + 1).toString(36)}"
+
+# server to emit messages for deploy events
+socket_path = path.resolve(tmp, getTempName())
+socket = null
+server = net.createServer allowHalfOpen: true, !(new_socket) ->
+  assert socket!?, "only one connection to daemon allowed"
+  socket := new_socket
+  socket.on \error, !(err) ->
+    log "Error: ipc channel socket: #{err.stack}"
+  socket.once \end, !->
+    socket := null
+server.listen socket_path, !->
+  child = spawn(process.execPath, [
+    path.join(__dirname, "master.js"),
+    worker_count,
+    script,
+  ].concat(argv), {
+    env: process.env
+    stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
+    cwd: process.cwd()
+  })
+
+  child.on \message, onMessage
+
+  child.stdout.pipe(log_stdout)
+  child.stderr.pipe(log_stderr)
+  child.on \exit, !->
+    onMessage do
+      event: \Shutdown
+      old_count: 0
+      new_count: 0
+    server.close()
+    tryUnlink pidfile
+  obj =
+    master: child.pid
+    daemon: process.pid
+    socket: socket_path
+    script: script
+    log:
+      naught: log_naught_path
+      stderr: log_stderr_path
+      stdout: log_stdout_path
+  fs.writeFile pidfile, JSON.stringify(obj), \utf8, !(err) ->
+    if err then log "Error: Unable to write pidfile to #{pidfile}.\n#{err.stack}\n"

@@ -10,5 +10,5 @@ http.createServer(function(req, resp) {
     resp.end("hi");
   }
 }).listen(11904, function() {
-  console.error("Stderr: listening"); 
+  console.error("stderr: listening");
 });

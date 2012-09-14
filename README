@@ -2,7 +2,7 @@ features:
 
  * zero downtime code hot-swapping
    - TODO: abort deploy
-   - TODO: communication back to the deploy command for status
+   - TODO: ctrl+C auto abort deploy
  * ability to change environment variables of workers with zero downtime
    - TODO
  * resuscitation - when a worker dies it is restarted
@@ -10,7 +10,8 @@ features:
  * redirect worker stdout and stderr to rotating log files
    - TODO
  * runs as daemon, providing ability to start and stop
-   - TODO: first 'shutdown', timeout to sigterm, timeout to sigkill
+   - TODO: when stopping, first try 'shutdown', timeout to sigterm, timeout to sigkill
+   - TODO: status actually checks whether the process is running
 
 usage:
 
