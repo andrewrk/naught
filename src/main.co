@@ -159,11 +159,11 @@ cmds =
     help: """
     naught deploy-abort [pidfile.pid]
 
-    Aborts a hanging deploy. A hanging deploy happens when a new worker
-    fails to emit the 'online' message, or when an old worker fails
-    to shutdown upon receiving the 'shutdown' message.
+        Aborts a hanging deploy. A hanging deploy happens when a new worker
+        fails to emit the 'online' message, or when an old worker fails
+        to shutdown upon receiving the 'shutdown' message.
 
-    Uses `#DEFAULT_PIDFILE` by default.
+        Uses `#DEFAULT_PIDFILE` by default.
     """
     fn: (argv) ->
       return false if argv.length > 1
