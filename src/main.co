@@ -1,7 +1,18 @@
 `#!/usr/bin/env node`
 
+const DEFAULT_PIDFILE = 'naught.pid'
+
 function wait (seconds, cb)
   setTimeout(cb, seconds * 1000)
+
+function chompArgv(obj, argv)
+  while argv.length
+    arg = argv.shift()
+    if arg.indexOf('--') is 0
+      obj[arg.substring(2)] = argv.shift()
+    else
+      return arg
+  null
 
 !function printUsage
   console.log "Usage:"
@@ -49,14 +60,15 @@ function wait (seconds, cb)
     wait options.timeout, !->
       process.kill(pid, 'SIGKILL')
 
-function chompArgv(obj, argv)
-  while argv.length
-    arg = argv.shift()
-    if arg.indexOf('--') is 0
-      obj[arg.substring(2)] = argv.shift()
-    else
-      return arg
-  null
+!function deploy (options, pidfile)
+  fs.readFile pidfile, \utf8, !(err, data) ->
+    pid = parseInt(data)
+    process.kill(pid, 'SIGUSR1')
+
+!function deployAbort (pidfile)
+  fs.readFile pidfile, \utf8, !(err, data) ->
+    pid = parseInt(data)
+    process.kill(pid, 'SIGUSR2')
 
 cmds =
   start:
@@ -69,7 +81,7 @@ cmds =
         Available options and their defaults:
 
         --worker-count 1
-        --pidfile naught.pid
+        --pidfile #DEFAULT_PIDFILE
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
@@ -80,7 +92,7 @@ cmds =
       # parse options
       options =
         'worker-count': '1'
-        'pidfile': 'naught.pid'
+        'pidfile': DEFAULT_PIDFILE
         'log': 'naught.log'
         'stdout': 'stdout.log'
         'stderr': 'stderr.log'
@@ -99,7 +111,7 @@ cmds =
     naught stop [options] [pidfile.pid]
 
         Stops the running server which created the pidfile.
-        Uses `naught.pid` by default.
+        Uses `#DEFAULT_PIDFILE` by default.
 
         This sends SIGTERM to the process and waits for timeout, then
         sends SIGKILL if the process has not already exited.
@@ -111,7 +123,7 @@ cmds =
     fn: (argv) ->
       options =
         timeout: '5'
-      pidfile = chompArgv(options, argv) or 'naught.pid'
+      pidfile = chompArgv(options, argv) or DEFAULT_PIDFILE
       if argv.length is 0
         options.timeout = parseFloat(options.timeout)
         stopScript(options, pidfile)
@@ -123,16 +135,42 @@ cmds =
     help: """
     naught deploy [options] [pidfile.pid]
 
-        Replaces workers with new workers using new code and the environment
-        variables from this command. Naught does this one worker at a time,
-        and waits to kill a worker until after the replacement is online.
+        Replaces workers with new workers using new code and optionally
+        the environment variables from this command. Naught does this one
+        worker at a time, and waits to kill a worker until after the
+        replacement is online.
+        Uses `#DEFAULT_PIDFILE` by default.
+
+        Available options and their defaults:
+
+            --replace-env true
     """
-    fn: (argv) -> false
+    fn: (argv) ->
+      options =
+        'replace-env': 'true'
+      pidfile = chompArgv(options, argv) or DEFAULT_PIDFILE
+      if argv.length is 0
+        options.timeout = options.timeout is \true
+        deploy(options, pidfile)
+        true
+      else
+        false
   'deploy-abort':
     help: """
     naught deploy-abort [pidfile.pid]
+
+    Aborts a hanging deploy. A hanging deploy happens when a new worker
+    fails to emit the 'online' message, or when an old worker fails
+    to shutdown upon receiving the 'shutdown' message.
+
+    Uses `#DEFAULT_PIDFILE` by default.
     """
-    fn: (argv) -> false
+    fn: (argv) ->
+      return false if argv.length > 1
+      pidfile = argv.0 or DEFAULT_PIDFILE
+      deployAbort(pidfile)
+      true
+
   help:
     help: """
     naught help [cmd]
