@@ -20,7 +20,7 @@ function chompArgv(obj, argv)
 !function readPids (pidfile, cb)
   fs.readFile pidfile, \utf8, !(err, data) ->
     if err?code is \ENOENT
-      console.log "server not running"
+      console.error "server not running"
       process.exit(1)
       return
     assert.ifError err
@@ -41,7 +41,7 @@ function chompArgv(obj, argv)
 
 !function printUsage
   for name, cmd in cmds
-    console.log "\n#{cmd.help}\n"
+    console.error "\n#{cmd.help}\n"
 
 !function startScript (options, script, argv)
   {spawn} = require('child_process')
@@ -84,24 +84,28 @@ function chompArgv(obj, argv)
 !function deploy (options, pidfile)
   readPids pidfile, !(pids) ->
     getDaemonMessages pids.socket,
-      ready: !->
-        process.kill(pids.master, 'SIGUSR1')
+      ready: !-> process.kill(pids.master, 'SIGUSR1')
       event: !(msg) ->
         switch msg.event
           case \ErrorDeployInProgress
-            console.log "There is deploy already in progress. Things you can do:"
-            console.log "1. monitor #{pids.log.naught}"
-            console.log "2. abort the deploy. see `naught help deploy-abort`"
+            console.error "There is deploy already in progress. Things you can do:"
+            console.error "1. monitor #{pids.log.naught}"
+            console.error "2. abort the deploy. see `naught help deploy-abort`"
             process.exit(1)
           default
-            console.log "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
+            console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
 
 !function deployAbort (pidfile)
   readPids pidfile, !(pids) ->
     getDaemonMessages pids.socket,
       ready: !-> process.kill(pids.master, 'SIGUSR2')
       event: !(msg) ->
-        console.log "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
+        switch msg.event
+          case \ErrorNoDeployInProgress
+            console.error "no deploy in progress"
+            process.exit(1)
+          default
+            console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
 
 !function displayStatus (pidfile)
   readPids pidfile, !(pids) ->
@@ -238,6 +242,6 @@ cmds =
 
 if (cmd = cmds[process.argv[2]])?
   if not cmd.fn(process.argv.slice(3))
-    console.log(cmd.help)
+    console.error(cmd.help)
 else
   printUsage()

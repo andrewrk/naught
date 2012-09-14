@@ -54,4 +54,10 @@ event \Bootup
     startNewWorker()
 
 !function deployAbort
-  ...
+  switch waiting_for
+    case \new
+      ...
+    case \old
+      ...
+    default
+      event \ErrorNoDeployInProgress
