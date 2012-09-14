@@ -50,7 +50,7 @@ function chompArgv(obj, argv)
       script,
     ].concat(argv), {
       env: process.env
-      stdio: ['ignore', 'ignore', 'ignore']
+      stdio: \ignore
       detached: true
       cwd: options.cwd
     })
