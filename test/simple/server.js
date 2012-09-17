@@ -20,4 +20,5 @@ http.createServer(function(req, resp) {
   }
 }).listen(11904, function() {
   console.error("stderr: listening");
+  process.send("online");
 });

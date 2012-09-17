@@ -35,9 +35,10 @@ event \Bootup
   assert new_workers.length < worker_count
   event \SpawnNew
   new_workers.push new_worker = cluster.fork()
-  new_worker.once \online, !->
-    event \NewOnline
-    cb()
+  new_worker.once \message, !(message) ->
+    if message is \online
+      event \NewOnline
+      cb()
 
 !function shutdownOld (cb)
   assert workers.length > 0
