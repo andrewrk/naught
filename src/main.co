@@ -213,9 +213,13 @@ cmds =
     naught deploy [options] [pidfile]
 
         Replaces workers with new workers using new code and optionally
-        the environment variables from this command. Naught does this one
-        worker at a time, and waits to kill a worker until after the
-        replacement is online.
+        the environment variables from this command.
+
+        Naught spawns all the new workers and waits for them to all become
+        online before killing a single old worker. This guarantees zero
+        downtime if any of the new workers fail and provides the ability to
+        cleanly abort the deployment if it hangs.
+
         Uses `#DEFAULT_PIDFILE` by default.
 
         Available options and their defaults:

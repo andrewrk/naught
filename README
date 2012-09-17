@@ -39,6 +39,11 @@ usage:
                }
            }
 
+       If your server has no long-lived connections, you may skip this step.
+       However, if you use, for example, Server Sent Events or WebSockets,
+       you will have to close those connections when you receive the
+       shutdown message.
+
 
 CLI:
 
@@ -50,18 +55,19 @@ CLI:
         Available options and their defaults:
 
         --worker-count 1
-        --pidfile naught.pid
+        --pidfile naught-pid.json
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
         --cwd .
+        --tmp /tmp
 
 
-    naught stop [options] [pidfile.pid]
+    naught stop [options] [pidfile]
 
         Stops the running server which created the pidfile.
-        Uses `naught.pid` by default.
+        Uses `naught-pid.json` by default.
 
         This sends SIGTERM to the process and waits for timeout, then
         sends SIGKILL if the process has not already exited.
@@ -71,7 +77,13 @@ CLI:
             --timeout 5
 
 
-    naught deploy [options] [pidfile.pid]
+    naught status [pidfile]
+
+        Displays whether a server is running or not.
+        Uses `naught-pid.json` by default.
+
+
+    naught deploy [options] [pidfile]
 
         Replaces workers with new workers using new code and optionally
         the environment variables from this command.
@@ -81,20 +93,20 @@ CLI:
         downtime if any of the new workers fail and provides the ability to
         cleanly abort the deployment if it hangs.
 
-        Uses `naught.pid` by default.
+        Uses `naught-pid.json` by default.
 
         Available options and their defaults:
 
             --replace-env true
 
 
-    naught deploy-abort [pidfile.pid]
+    naught deploy-abort [pidfile]
 
         Aborts a hanging deploy. A hanging deploy happens when a new worker
         fails to emit the 'online' message, or when an old worker fails
         to shutdown upon receiving the 'shutdown' message.
 
-        Uses `naught.pid` by default.
+        Uses `naught-pid.json` by default.
 
 
     naught help [cmd]
