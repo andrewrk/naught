@@ -16,5 +16,8 @@
   "license": "BSD",
   "devDependencies": {
     "coco": "~0.8.1"
+  },
+  "dependencies": {
+    "async": "~0.1.22"
   }
 }

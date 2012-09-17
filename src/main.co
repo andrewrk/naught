@@ -35,9 +35,21 @@ function chompArgv(obj, argv)
   net = require('net')
   socket = net.connect socket_path, cbs.ready
   socket.setEncoding \utf8
+  buffer = ""
+
+  function msgFromBuffer
+    sep = buffer.indexOf("\n")
+    return null if sep is -1
+    msg_len = parseInt(buffer.substring(0, sep))
+    next_msg_start = sep + msg_len + 1
+    return null if next_msg_start > buffer.length
+    result = JSON.parse(buffer.substring(sep + 1, next_msg_start))
+    buffer := buffer.substring(next_msg_start)
+    return result
+
   socket.on \data, !(data) ->
-    msg = JSON.parse(data)
-    cbs.event?(msg)
+    buffer += data
+    cbs.event(msg) while msg = msgFromBuffer()
 
 !function printUsage
   for name, cmd in cmds
@@ -81,6 +93,9 @@ function chompArgv(obj, argv)
       else
         throw e
 
+!function printDaemonMsg (msg)
+  console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
+
 !function deploy (options, pidfile)
   readPids pidfile, !(pids) ->
     getDaemonMessages pids.socket,
@@ -88,12 +103,15 @@ function chompArgv(obj, argv)
       event: !(msg) ->
         switch msg.event
           case \ErrorDeployInProgress
-            console.error "There is deploy already in progress. Things you can do:"
+            console.error "Deploy already in progress. Things you can do:"
             console.error "1. monitor #{pids.log.naught}"
             console.error "2. abort the deploy. see `naught help deploy-abort`"
             process.exit(1)
+          case \Ready
+            console.error "deploy succeeded"
+            process.exit(0)
           default
-            console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
+            printDaemonMsg msg
 
 !function deployAbort (pidfile)
   readPids pidfile, !(pids) ->
@@ -104,8 +122,11 @@ function chompArgv(obj, argv)
           case \ErrorNoDeployInProgress
             console.error "no deploy in progress"
             process.exit(1)
+          case \Ready
+            console.error "deploy aborted"
+            process.exit(0)
           default
-            console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}"
+            printDaemonMsg msg
 
 !function displayStatus (pidfile)
   readPids pidfile, !(pids) ->

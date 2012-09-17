@@ -29,8 +29,10 @@ log_stdout = fs.createWriteStream log_stdout_path,
   process.stdout.write str
 
 !function onMessage (message)
-  log_naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}\n")
-  socket?write JSON.stringify(message)
+  log_naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
+  if socket?
+    str_msg = JSON.stringify(message)
+    socket.write "#{str_msg.length}\n#str_msg"
 
 !function tryUnlink (file)
   try
@@ -72,6 +74,7 @@ server.listen socket_path, !->
       event: \Shutdown
       old_count: 0
       new_count: 0
+      dying_count: 0
     server.close()
     tryUnlink pidfile
   obj =
