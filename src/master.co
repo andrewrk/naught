@@ -19,8 +19,11 @@ new_workers = []
 dying_workers = []
 waiting_for = null
 
-process.on(\SIGUSR1, deployStart)
-process.on(\SIGUSR2, deployAbort)
+process.on \message, !(message) ->
+  switch message
+    case \NaughtDeploy then deployStart()
+    case \NaughtDeployAbort then deployAbort()
+    default then event \UnrecognizedMessage
 
 event \Bootup
 

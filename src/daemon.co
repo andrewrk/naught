@@ -4,6 +4,7 @@ const
   {spawn} = require('child_process')
   net = require('net')
   assert = require('assert')
+  json_socket = require('./json_socket')
 
 argv = process.argv.slice(2)
 worker_count = argv.shift()
@@ -30,9 +31,7 @@ log_stdout = fs.createWriteStream log_stdout_path,
 
 !function onMessage (message)
   log_naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
-  if socket?
-    str_msg = JSON.stringify(message)
-    socket.write "#{str_msg.length}\n#str_msg"
+  if socket? then json_socket.send(socket, message)
 
 !function tryUnlink (file)
   try
@@ -47,15 +46,21 @@ function getTempName
 # server to emit messages for deploy events
 socket_path = path.resolve(tmp, getTempName())
 socket = null
-server = net.createServer allowHalfOpen: true, !(new_socket) ->
+child = null
+server = net.createServer !(new_socket) ->
   assert socket!?, "only one connection to daemon allowed"
   socket := new_socket
-  socket.on \error, !(err) ->
+  socket.once \error, !(err) ->
     log "Error: ipc channel socket: #{err.stack}"
   socket.once \end, !->
     socket := null
+  json_socket.listen socket, !(msg) ->
+    switch msg
+      case \Deploy then child?send('NaughtDeploy')
+      case \DeployAbort then child?send('NaughtDeployAbort')
+      default then log "Error: unrecognized message from naught: #{msg}"
 server.listen socket_path, !->
-  child = spawn(process.execPath, [
+  child := spawn(process.execPath, [
     path.join(__dirname, "master.js"),
     worker_count,
     script,

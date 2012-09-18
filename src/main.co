@@ -2,7 +2,9 @@
 
 const
   fs = require('fs')
+  net = require('net')
   assert = require('assert')
+  json_socket = require('./json_socket')
 const DEFAULT_PIDFILE = 'naught-pid.json'
 
 function wait (seconds, cb)
@@ -31,25 +33,10 @@ function chompArgv(obj, argv)
       process.exit(1)
     cb(pids)
 
-!function getDaemonMessages (socket_path, cbs)
-  net = require('net')
+function getDaemonMessages (socket_path, cbs)
   socket = net.connect socket_path, cbs.ready
-  socket.setEncoding \utf8
-  buffer = ""
-
-  function msgFromBuffer
-    sep = buffer.indexOf("\n")
-    return null if sep is -1
-    msg_len = parseInt(buffer.substring(0, sep))
-    next_msg_start = sep + msg_len + 1
-    return null if next_msg_start > buffer.length
-    result = JSON.parse(buffer.substring(sep + 1, next_msg_start))
-    buffer := buffer.substring(next_msg_start)
-    return result
-
-  socket.on \data, !(data) ->
-    buffer += data
-    cbs.event(msg) while msg = msgFromBuffer()
+  json_socket.listen(socket, cbs.event)
+  socket
 
 !function printUsage
   for name, cmd in cmds
@@ -98,8 +85,8 @@ function chompArgv(obj, argv)
 
 !function deploy (options, pidfile)
   readPids pidfile, !(pids) ->
-    getDaemonMessages pids.socket,
-      ready: !-> process.kill(pids.master, 'SIGUSR1')
+    socket = getDaemonMessages pids.socket,
+      ready: !-> json_socket.send(socket, \Deploy)
       event: !(msg) ->
         switch msg.event
           case \ErrorDeployInProgress
@@ -115,8 +102,8 @@ function chompArgv(obj, argv)
 
 !function deployAbort (pidfile)
   readPids pidfile, !(pids) ->
-    getDaemonMessages pids.socket,
-      ready: !-> process.kill(pids.master, 'SIGUSR2')
+    socket = getDaemonMessages pids.socket,
+      ready: !-> json_socket.send(socket, \DeployAbort)
       event: !(msg) ->
         switch msg.event
           case \ErrorNoDeployInProgress
