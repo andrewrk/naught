@@ -1,7 +1,6 @@
 features:
 
  * zero downtime code hot-swapping
-   - TODO: ctrl+C auto abort deploy
  * ability to change environment variables of workers with zero downtime
    - TODO
  * resuscitation - when a worker dies it is restarted

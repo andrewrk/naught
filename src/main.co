@@ -86,7 +86,11 @@ function getDaemonMessages (socket_path, cbs)
 !function deploy (options, pidfile)
   readPids pidfile, !(pids) ->
     socket = getDaemonMessages pids.socket,
-      ready: !-> json_socket.send(socket, \Deploy)
+      ready: !->
+        process.once \SIGINT, !->
+          console.error "aborting deploy"
+          json_socket.send(socket, \DeployAbort)
+        json_socket.send(socket, \Deploy)
       event: !(msg) ->
         switch msg.event
           case \ErrorDeployInProgress
@@ -95,7 +99,7 @@ function getDaemonMessages (socket_path, cbs)
             console.error "2. abort the deploy. see `naught help deploy-abort`"
             process.exit(1)
           case \Ready
-            console.error "deploy succeeded"
+            console.error "done"
             process.exit(0)
           default
             printDaemonMsg msg
