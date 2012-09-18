@@ -55,7 +55,7 @@ CLI:
         Available options and their defaults:
 
         --worker-count 1
-        --pidfile naught-pid.json
+        --pidfile naught.json
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
@@ -67,7 +67,7 @@ CLI:
     naught stop [options] [pidfile]
 
         Stops the running server which created the pidfile.
-        Uses `naught-pid.json` by default.
+        Uses `naught.json` by default.
 
         This sends SIGTERM to the process and waits for timeout, then
         sends SIGKILL if the process has not already exited.
@@ -80,7 +80,7 @@ CLI:
     naught status [pidfile]
 
         Displays whether a server is running or not.
-        Uses `naught-pid.json` by default.
+        Uses `naught.json` by default.
 
 
     naught deploy [options] [pidfile]
@@ -93,7 +93,7 @@ CLI:
         downtime if any of the new workers fail and provides the ability to
         cleanly abort the deployment if it hangs.
 
-        Uses `naught-pid.json` by default.
+        Uses `naught.json` by default.
 
         Available options and their defaults:
 
@@ -106,7 +106,7 @@ CLI:
         fails to emit the 'online' message, or when an old worker fails
         to shutdown upon receiving the 'shutdown' message.
 
-        Uses `naught-pid.json` by default.
+        Uses `naught.json` by default.
 
 
     naught help [cmd]

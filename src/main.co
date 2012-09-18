@@ -5,7 +5,7 @@ const
   net = require('net')
   assert = require('assert')
   json_socket = require('./json_socket')
-const DEFAULT_PIDFILE = 'naught-pid.json'
+const DEFAULT_PIDFILE = 'naught.json'
 
 function wait (seconds, cb)
   setTimeout(cb, seconds * 1000)
