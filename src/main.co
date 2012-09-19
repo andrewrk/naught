@@ -14,10 +14,15 @@ function chompArgv(obj, argv)
   while argv.length
     arg = argv.shift()
     if arg.indexOf('--') is 0
-      obj[arg.substring(2)] = argv.shift()
+      arg_name = arg.substring(2)
+      if arg_name not in obj
+        return [new Error('InvalidArgument'), null]
+      if argv.length is 0
+        return [new Error('MissingArgument'), null]
+      obj[arg_name] = argv.shift()
     else
-      return arg
-  null
+      return [null, arg]
+  return [null, null]
 
 !function readPids (pidfile, cb)
   fs.readFile pidfile, \utf8, !(err, data) ->
@@ -156,8 +161,8 @@ cmds =
         'max-log-size': '10485760'
         'cwd': process.cwd()
         'tmp': '/tmp'
-      script = chompArgv(options, argv)
-      if script?
+      [err, script] = chompArgv(options, argv)
+      if not err and script?
         options.'worker-count' = parseInt(options.'worker-count')
         options.'max-log-size' = parseInt(options.'max-log-size')
         startScript(options, script, argv)
@@ -181,8 +186,8 @@ cmds =
     fn: (argv) ->
       options =
         timeout: '5'
-      pidfile = chompArgv(options, argv) or DEFAULT_PIDFILE
-      if argv.length is 0
+      [err, pidfile or DEFAULT_PIDFILE] = chompArgv(options, argv)
+      if not err and argv.length is 0
         options.timeout = parseFloat(options.timeout)
         stopScript(options, pidfile)
         true
@@ -223,8 +228,8 @@ cmds =
     fn: (argv) ->
       options =
         'replace-env': 'true'
-      pidfile = chompArgv(options, argv) or DEFAULT_PIDFILE
-      if argv.length is 0
+      [err, pidfile or DEFAULT_PIDFILE] = chompArgv(options, argv)
+      if not err and argv.length is 0
         options.'replace-env' = options.'replace-env' is \true
         deploy(options, pidfile)
         true
