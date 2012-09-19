@@ -2,6 +2,7 @@
 
 const
   fs = require('fs')
+  os = require('os')
   net = require('net')
   assert = require('assert')
   json_socket = require('./json_socket')
@@ -147,8 +148,8 @@ cmds =
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
-        --cwd .
-        --tmp /tmp
+        --cwd #{process.cwd()}
+        --tmp #{os.tmpDir()}
       """
     fn: (argv) ->
       # parse options
@@ -160,7 +161,7 @@ cmds =
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
         'cwd': process.cwd()
-        'tmp': '/tmp'
+        'tmp': os.tmpDir()
       [err, script] = chompArgv(options, argv)
       if not err and script?
         options.'worker-count' = parseInt(options.'worker-count')
