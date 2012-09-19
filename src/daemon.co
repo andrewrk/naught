@@ -55,10 +55,9 @@ server = net.createServer !(new_socket) ->
   socket.once \end, !->
     socket := null
   json_socket.listen socket, !(msg) ->
-    switch msg
-      case \Deploy then child?send('NaughtDeploy')
-      case \DeployAbort then child?send('NaughtDeployAbort')
-      default then log "Error: unrecognized message from naught: #{msg}"
+    if msg.action is \NaughtDeploy
+      process.env? = msg.environment
+    child?send msg
 server.listen socket_path, !->
   child := spawn(process.execPath, [
     path.join(__dirname, "master.js"),

@@ -20,8 +20,10 @@ dying_workers = []
 waiting_for = null
 
 process.on \message, !(message) ->
-  switch message
-    case \NaughtDeploy then deployStart()
+  switch message.action
+    case \NaughtDeploy
+      process.env? = message.environment
+      deployStart()
     case \NaughtDeployAbort then deployAbort()
     default then event \UnrecognizedMessage
 

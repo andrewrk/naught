@@ -89,8 +89,10 @@ function getDaemonMessages (socket_path, cbs)
       ready: !->
         process.once \SIGINT, !->
           console.error "aborting deploy"
-          json_socket.send(socket, \DeployAbort)
-        json_socket.send(socket, \Deploy)
+          json_socket.send socket, action: \NaughtDeployAbort
+        json_socket.send socket,
+          action: \NaughtDeploy
+          environment: if options.'replace-env' then process.env else null
       event: !(msg) ->
         switch msg.event
           case \ErrorDeployInProgress
@@ -107,7 +109,8 @@ function getDaemonMessages (socket_path, cbs)
 !function deployAbort (pidfile)
   readPids pidfile, !(pids) ->
     socket = getDaemonMessages pids.socket,
-      ready: !-> json_socket.send(socket, \DeployAbort)
+      ready: !->
+        json_socket.send socket, action: \NaughtDeployAbort
       event: !(msg) ->
         switch msg.event
           case \ErrorNoDeployInProgress
@@ -222,7 +225,7 @@ cmds =
         'replace-env': 'true'
       pidfile = chompArgv(options, argv) or DEFAULT_PIDFILE
       if argv.length is 0
-        options.timeout = options.timeout is \true
+        options.'replace-env' = options.'replace-env' is \true
         deploy(options, pidfile)
         true
       else

@@ -1,10 +1,11 @@
-var http;
+var http, util;
 
 http = require("http");
+util = require("util");
 
 console.log("stdout: attempting to listen");
 http.createServer(function(req, resp) {
-  if (req.path === "/die") {
+  if (req.url === "/die") {
     throw new Error("unhandled exception");
   } else if (req.path === "/event") {
     req.socket.setTimeout(Infinity);
@@ -15,6 +16,9 @@ http.createServer(function(req, resp) {
 
     resp.write("id: 0\n");
     resp.write("data: 'hi'}\n\n");
+  } else if (req.url === "/env") {
+    resp.setHeader('Content-Type', 'text/plain');
+    resp.end(JSON.stringify(process.env, null, 4));
   } else {
     resp.end('<html><head></head><body><script>var ev = new EventSource("/event");</script></body></html>');
   }
