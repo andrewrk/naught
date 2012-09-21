@@ -8,3 +8,4 @@
 * make sure there is zero downtime when a worker dies and the worker is restarted
 * logging to correct files / log rotation
 * 'shutdown', sigterm, sigkill
+* sending a process.message other than 'online' first thing
