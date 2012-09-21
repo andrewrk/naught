@@ -2,14 +2,12 @@
 
 const
   fs = require('fs')
-  os = require('os')
   net = require('net')
   assert = require('assert')
   json_socket = require('./json_socket')
-const DEFAULT_PIDFILE = 'naught.json'
-
-function wait (seconds, cb)
-  setTimeout(cb, seconds * 1000)
+  {spawn} = require('child_process')
+  path = require('path')
+const DEFAULT_IPC_FILE = 'naught.ipc'
 
 function chompArgv(obj, argv)
   while argv.length
@@ -25,23 +23,25 @@ function chompArgv(obj, argv)
       return [null, arg]
   return [null, null]
 
-!function readPids (pidfile, cb)
-  fs.readFile pidfile, \utf8, !(err, data) ->
-    if err?code is \ENOENT
-      console.error "server not running"
-      process.exit(1)
-      return
-    assert.ifError err
-    try
-      pids = JSON.parse(data)
-    catch
-      console.error "Invalid pidfile: #{pidfile}"
-      process.exit(1)
-    cb(pids)
-
-function getDaemonMessages (socket_path, cbs)
+function connectToDaemon (socket_path, cbs)
   socket = net.connect socket_path, cbs.ready
   json_socket.listen(socket, cbs.event)
+  socket
+
+!function assertErrorIsFromInvalidSocket (error)
+  throw error unless error.code is \ENOENT
+
+function getDaemonMessages (socket_path, cbs)
+  socket = connectToDaemon(socket_path, cbs)
+  socket.on \error, !(error) ->
+    if error.code is \ENOENT
+      console.error "server not running"
+      process.exit(1)
+    else if error.code is \ECONNREFUSED
+      console.error "unable to connect to ipc-file `#{socket_path}`"
+      process.exit(1)
+    else
+      throw error
   socket
 
 !function printUsage
@@ -49,114 +49,111 @@ function getDaemonMessages (socket_path, cbs)
     console.error "\n#{cmd.help}\n"
 
 !function startScript (options, script, argv)
-  {spawn} = require('child_process')
-  path = require('path')
+  socket = connectToDaemon options.'ipc-file',
+    ready: !->
+      json_socket.send socket, action: \NaughtStatus
+    event: !(msg) ->
+      if msg.event is \Status
+        printStatusMsg msg
+        process.exit(1)
+      else
+        printDaemonMsg msg
+  socket.on \error, !(error) ->
+    if error.code is \ECONNREFUSED
+      console.error "unable to connect to ipc-file #{socket_path}"
+      process.exit(1)
+    else if error.code is \ENOENT
+      # no server running
+      child = spawn(process.execPath, [
+        path.join(__dirname, "daemon.js"),
+        options.'worker-count',
+        options.'ipc-file',
+        options.log,
+        options.stderr,
+        options.stdout,
+        options.'max-log-size',
+        script,
+      ].concat(argv), {
+        env: process.env
+        stdio: \inherit
+        detached: true
+        cwd: options.cwd
+      })
+      child.unref()
+    else
+      throw error
 
-  fs.stat options.pidfile, !(err, stats) ->
-    unless err?code is \ENOENT
-      console.error("pidfile #{options.pidfile} already exists.")
-      console.error("Stop the old server before starting a new one.")
-      return
-    child = spawn(process.execPath, [
-      path.join(__dirname, "daemon.js"),
-      options.'worker-count',
-      options.pidfile,
-      options.log,
-      options.stderr,
-      options.stdout,
-      options.'max-log-size',
-      options.tmp,
-      script,
-    ].concat(argv), {
-      env: process.env
-      stdio: \inherit
-      detached: true
-      cwd: options.cwd
-    })
-    child.unref()
-
-
-!function stopScript (options, pidfile)
-  readPids pidfile, !(pids) ->
-    timeout_term = null
-    timeout_kill = null
-    {timeout} = options
-    if timeout?
-      timeout_term = wait timeout, !->
-        pid = pids.master
-        console.error "Timeout. Sending SIGTERM"
-        tryProcessKill(pid, 'SIGTERM', pidfile)
-        timeout_kill := wait timeout, !->
-          console.error "Timeout. Sending SIGKILL"
-          tryProcessKill(pid, 'SIGKILL', pidfile)
-    socket = getDaemonMessages pids.socket,
-      ready: !->
-        json_socket.send socket, action: \NaughtShutdown
-      event: !(msg) ->
-        if msg.event is \Shutdown
-          clearTimeout(timeout_term) if timeout_term?
-          clearTimeout(timeout_kill) if timeout_kill?
-          process.exit(0)
-        else
-          printDaemonMsg msg
+!function stopScript (options, ipc_file)
+  socket = getDaemonMessages ipc_file,
+    ready: !->
+      json_socket.send socket,
+        action: \NaughtShutdown
+        timeout: options.timeout
+    event: !(msg) ->
+      if msg.event is \Shutdown
+        process.exit(0)
+      else
+        printDaemonMsg msg
 
 !function printDaemonMsg (msg)
   console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
 
-function tryProcessKill (pid, signal, pidfile)
-  try
-    process.kill(pid, signal)
-  catch e
-    if e.code is \ESRCH
-      console.error("No process killed with pid #pid.")
-      console.error("`rm #pidfile` manually after ensuring your server is not already running.")
-      process.exit(1)
-    else
-      throw e
-  return true
+!function printStatusMsg (msg)
+  if msg.waiting_for?
+    console.log "deploy in progress"
+    console.log "old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
+  else
+    console.log "server is running"
+    console.log "workers online: #{msg.old_count}"
 
-!function deploy (options, pidfile)
-  readPids pidfile, !(pids) ->
-    socket = getDaemonMessages pids.socket,
-      ready: !->
-        process.once \SIGINT, !->
-          console.error "aborting deploy"
-          json_socket.send socket, action: \NaughtDeployAbort
-        json_socket.send socket,
-          action: \NaughtDeploy
-          environment: if options.'replace-env' then process.env else null
-      event: !(msg) ->
-        switch msg.event
-          case \ErrorDeployInProgress
-            console.error "Deploy already in progress. Things you can do:"
-            console.error "1. monitor #{pids.log.naught}"
-            console.error "2. abort the deploy. see `naught help deploy-abort`"
-            process.exit(1)
-          case \Ready
-            console.error "done"
-            process.exit(0)
-          default
-            printDaemonMsg msg
+!function deploy (options, ipc_file)
+  socket = getDaemonMessages ipc_file,
+    ready: !->
+      setAbortKeyboardHook()
+      json_socket.send socket,
+        action: \NaughtDeploy
+        environment: if options.'replace-env' then process.env else null
+        timeout: options.timeout
+    event: !(msg) ->
+      switch msg.event
+        case \ErrorDeployInProgress
+          console.error "Deploy already in progress. Press Ctrl+C to abort."
+          setAbortKeyboardHook()
+        case \Ready
+          console.error "done"
+          process.exit(0)
+        default
+          printDaemonMsg msg
+  !function setAbortKeyboardHook
+    process.once \SIGINT, !->
+      console.error "aborting deploy"
+      json_socket.send socket, action: \NaughtDeployAbort
 
-!function deployAbort (pidfile)
-  readPids pidfile, !(pids) ->
-    socket = getDaemonMessages pids.socket,
-      ready: !->
-        json_socket.send socket, action: \NaughtDeployAbort
-      event: !(msg) ->
-        switch msg.event
-          case \ErrorNoDeployInProgress
-            console.error "no deploy in progress"
-            process.exit(1)
-          case \Ready
-            console.error "deploy aborted"
-            process.exit(0)
-          default
-            printDaemonMsg msg
+!function deployAbort (ipc_file)
+  socket = getDaemonMessages ipc_file,
+    ready: !->
+      json_socket.send socket, action: \NaughtDeployAbort
+    event: !(msg) ->
+      switch msg.event
+        case \ErrorNoDeployInProgress
+          console.error "no deploy in progress"
+          process.exit(1)
+        case \Ready
+          console.error "deploy aborted"
+          process.exit(0)
+        default
+          printDaemonMsg msg
 
-!function displayStatus (pidfile)
-  readPids pidfile, !(pids) ->
-    console.log "#{pids.daemon} #{pids.master} #{pids.script}"
+!function displayStatus (ipc_file)
+  socket = getDaemonMessages ipc_file,
+    ready: !->
+      json_socket.send socket, action: \NaughtStatus
+    event: !(msg) ->
+      if msg.event is \Status
+        printStatusMsg msg
+        process.exit(0)
+      else
+        printDaemonMsg msg
 
 cmds =
   start:
@@ -168,32 +165,32 @@ cmds =
 
         Each worker's stdout and stderr are redirected to a log files
         specified by the `stdout` and `stderr` parameters. When a log file
-        becomes larger than the `max-log-size` parameter, the log file
-        is gzipped and renamed using the current date and time, and a new
-        log file is opened.
+        becomes larger than `max-log-size`, the log file is renamed using the
+        current date and time, and a new log file is opened.
+
+        Creates an `ipc-file` which naught uses to communicate with your
+        server once it has started.
 
         Available options and their defaults:
 
         --worker-count 1
-        --pidfile #DEFAULT_PIDFILE
+        --ipc-file #DEFAULT_IPC_FILE
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
         --cwd #{process.cwd()}
-        --tmp #{os.tmpDir()}
       """
     fn: (argv) ->
       # parse options
       options =
         'worker-count': '1'
-        'pidfile': DEFAULT_PIDFILE
+        'ipc-file': DEFAULT_IPC_FILE
         'log': 'naught.log'
         'stdout': 'stdout.log'
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
         'cwd': process.cwd()
-        'tmp': os.tmpDir()
       [err, script] = chompArgv(options, argv)
       if not err and script?
         options.'worker-count' = parseInt(options.'worker-count')
@@ -204,18 +201,16 @@ cmds =
         false
   stop:
     help: """
-    naught stop [options] [pidfile]
+    naught stop [options] [ipc-file]
 
-        Stops the running server which created the pidfile.
-        Uses `#DEFAULT_PIDFILE` by default.
+        Stops the running server which created `ipc-file`.
+        Uses `#DEFAULT_IPC_FILE` by default.
 
         This sends the 'shutdown' message to all the workers and waits for
         them to exit gracefully.
 
-        If you specify a timeout, naught will wait for the seconds to pass,
-        and then send a SIGTERM to kill your server. Naught will then wait
-        for timeout again, finally sending a SIGKILL to your server if it
-        has not exited on its own.
+        If you specify a timeout, naught will forcefully kill your workers
+        if they do not shut down gracefully within the timeout.
 
         Available options and their defaults:
 
@@ -224,31 +219,31 @@ cmds =
     fn: (argv) ->
       options =
         timeout: 'none'
-      [err, pidfile or DEFAULT_PIDFILE] = chompArgv(options, argv)
+      [err, ipc_file or DEFAULT_IPC_FILE] = chompArgv(options, argv)
       if not err and argv.length is 0
         options.timeout = parseFloat(options.timeout)
         options.timeout = null if isNaN(options.timeout)
-        stopScript(options, pidfile)
+        stopScript(options, ipc_file)
         true
       else
         false
 
   status:
     help: """
-    naught status [pidfile]
+    naught status [ipc-file]
 
         Displays whether a server is running or not.
-        Uses `#DEFAULT_PIDFILE` by default.
+        Uses `#DEFAULT_IPC_FILE` by default.
     """
     fn: (argv) ->
       return false if argv.length > 1
-      pidfile = argv.0 or DEFAULT_PIDFILE
-      displayStatus(pidfile)
+      ipc_file = argv.0 or DEFAULT_IPC_FILE
+      displayStatus(ipc_file)
       true
 
   deploy:
     help: """
-    naught deploy [options] [pidfile]
+    naught deploy [options] [ipc-file]
 
         Replaces workers with new workers using new code and optionally
         the environment variables from this command.
@@ -258,43 +253,59 @@ cmds =
         downtime if any of the new workers fail and provides the ability to
         cleanly abort the deployment if it hangs.
 
-        Uses `#DEFAULT_PIDFILE` by default.
+        A hanging deploy happens when a new worker fails to emit the 'online'
+        message, or when an old worker fails to shutdown upon receiving the
+        'shutdown' message. A keyboard interrupt will cause a deploy-abort,
+        cleanly and with zero downtime.
+
+        If `timeout` is specified, naught will automatically abort the deploy
+        if it does not finish within those seconds.
+
+        Uses `#DEFAULT_IPC_FILE` by default.
 
         Available options and their defaults:
 
             --replace-env true
+            --timeout none
     """
     fn: (argv) ->
       options =
         'replace-env': 'true'
-      [err, pidfile or DEFAULT_PIDFILE] = chompArgv(options, argv)
+        'timeout': 'none'
+      [err, ipc_file or DEFAULT_IPC_FILE] = chompArgv(options, argv)
       if not err and argv.length is 0
         options.'replace-env' = options.'replace-env' is \true
-        deploy(options, pidfile)
+        options.timeout = parseFloat(options.timeout)
+        options.timeout = null if isNaN(options.timeout)
+        deploy(options, ipc_file)
         true
       else
         false
   'deploy-abort':
     help: """
-    naught deploy-abort [pidfile]
+    naught deploy-abort [icp-file]
 
         Aborts a hanging deploy. A hanging deploy happens when a new worker
         fails to emit the 'online' message, or when an old worker fails
         to shutdown upon receiving the 'shutdown' message.
 
-        Uses `#DEFAULT_PIDFILE` by default.
+        When deploying, a keyboard interrupt will cause a deploy-abort,
+        so the times you actually have to run this command will be few and
+        far between.
+
+        Uses `#DEFAULT_IPC_FILE` by default.
     """
     fn: (argv) ->
       return false if argv.length > 1
-      pidfile = argv.0 or DEFAULT_PIDFILE
-      deployAbort(pidfile)
+      ipc_file = argv.0 or DEFAULT_IPC_FILE
+      deployAbort(ipc_file)
       true
 
   help:
     help: """
     naught help [cmd]
 
-        Displays help for cmd
+        Displays help for cmd.
     """
     fn: (argv) ->
       if argv.length is 1 and (cmd = cmds[argv[0]])?

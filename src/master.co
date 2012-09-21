@@ -19,13 +19,21 @@ new_workers = newWorkerCollection()
 dying_workers = newWorkerCollection()
 waiting_for = null
 
+abort_timeout = null
 process.on \message, !(message) ->
   switch message.action
     case \NaughtDeploy
       process.env? = message.environment
       deployStart()
+      if (timeout = message.timeout)?
+        abort_timeout := setTimeout(deployAbort, timeout * 1000)
     case \NaughtDeployAbort then deployAbort()
-    case \NaughtShutdown then shutdownAll()
+    case \NaughtShutdown
+      shutdownAll()
+      if (timeout = message.timeout)?
+        setTimeout(destroyAll, timeout * 1000)
+    case \NaughtStatus
+      event \Status
     default then event \UnrecognizedMessage
 
 event \Bootup
@@ -82,6 +90,7 @@ function makeWorker
     new_count: new_workers.count
     old_count: workers.count
     dying_count: dying_workers.count
+    waiting_for: waiting_for
     event: name
 
 !function spawnNew (cb)
@@ -123,6 +132,9 @@ function makeWorker
       assert dying_workers.count is 0
       event \Ready
       waiting_for := null
+      if abort_timeout?
+        clearTimeout(abort_timeout)
+        abort_timeout := null
       [workers, new_workers] := [new_workers, workers]
 
 !function destroyNew (cb)
@@ -138,9 +150,7 @@ function makeWorker
         event \Ready
         waiting_for := null
     case \old
-      forEachWorker dying_workers, !(pid, dying_worker) ->
-        event \DestroyOld
-        dying_worker.destroy()
+      destroyDying()
     default
       event \ErrorNoDeployInProgress
 
@@ -149,3 +159,13 @@ function makeWorker
   funcs_old = (shutdownOld for i from 0 til workers.count)
   funcs_new = (shutdownNew for i from 0 til new_workers.count)
   async.parallel funcs_old.concat(funcs_new), !-> process.exit(0)
+
+!function destroyDying
+  forEachWorker dying_workers, !(pid, dying_worker) ->
+    event \DestroyOld
+    dying_worker.destroy()
+
+!function destroyAll
+  assert workers.count is 0
+  assert new_workers.count is 0
+  destroyDying()

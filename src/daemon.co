@@ -10,12 +10,11 @@ const
 
 argv = process.argv.slice(2)
 worker_count = parseInt(argv.shift())
-pidfile = argv.shift()
+socket_path = argv.shift()
 log_naught_path = argv.shift()
 log_stderr_path = argv.shift()
 log_stdout_path = argv.shift()
 max_log_size = parseInt(argv.shift())
-tmp = argv.shift()
 script = argv.shift()
 
 logs = null
@@ -42,20 +41,9 @@ async.parallel {
   logs.naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
   if socket? then json_socket.send(socket, message)
 
-!function tryUnlink (file)
-  try
-    fs.unlinkSync file
-  catch e
-    console.error "Unable to remove #{file}.\n#{e.stack}"
-
-function getTempName
-  now = new Date()
-  "#{now.getYear()}-#{now.getMonth()}-#{now.getDay()}-#{process.pid}-#{(Math.random() * 0x100000000 + 1).toString(36)}"
-
 # server to emit messages for deploy events
 socket = null
 !function startIpcServerAndThenMaster
-  socket_path = path.resolve(tmp, getTempName())
   child = null
   server = net.createServer !(new_socket) ->
     if socket?
@@ -92,15 +80,3 @@ socket = null
         new_count: 0
         dying_count: 0
       server.close()
-      tryUnlink pidfile
-    obj =
-      master: child.pid
-      daemon: process.pid
-      socket: socket_path
-      script: script
-      log:
-        naught: log_naught_path
-        stderr: log_stderr_path
-        stdout: log_stdout_path
-    fs.writeFile pidfile, JSON.stringify(obj), \utf8, !(err) ->
-      if err then log "Error: Unable to write pidfile to #{pidfile}.\n#{err.stack}\n"
