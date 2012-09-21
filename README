@@ -16,7 +16,7 @@ usage:
 
            process.send('online');
 
-       Usually this is done in the 'listening' event for a node server, for
+       Usually this is done in the `listening` event for a node server, for
        example:
 
            server = http.createServer(...);
@@ -24,7 +24,7 @@ usage:
                process.send('online');
            });
 
-    2. Listen to the 'shutdown' message and shutdown gracefully. This message
+    2. Listen to the `shutdown` message and shutdown gracefully. This message
        is emitted after there is already a newer instance of your server
        online and taking care of business:
 
@@ -36,9 +36,12 @@ usage:
            }
 
        If your server has no long-lived connections, you may skip this step.
-       However, if you use, for example, Server Sent Events or WebSockets,
-       you will have to close those connections when you receive the
-       shutdown message.
+       However, note that most node.js apps do have long lived connections.
+       In fact, by default, the connection: keep-alive header is sent with
+       every request.
+
+       When you receive the `shutdown` message, either close all open
+       connections or call `process.exit()`.
 
 
 CLI:
