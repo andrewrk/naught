@@ -7,5 +7,8 @@
 * manually killing a server and then checking the status reports correctly
 * make sure there is zero downtime when a worker dies and the worker is restarted
 * logging to correct files / log rotation
+  - appending to an existing log file
+  - starting a new one
+  - mkdirp
 * 'shutdown', sigterm, sigkill
 * sending a process.message other than 'online' first thing

@@ -4,7 +4,6 @@ features:
  * ability to change environment variables of workers with zero downtime
  * resuscitation - when a worker dies it is restarted
  * redirect worker stdout and stderr to rotating log files
-   - TODO: rotate the log files
  * runs as daemon, providing ability to start and stop
 
 usage:

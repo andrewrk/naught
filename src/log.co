@@ -1,0 +1,52 @@
+const
+  fs = require('fs')
+  mkdirp = require('mkdirp')
+  path = require('path')
+  {EventEmitter} = require('events')
+
+# cb(err, log)
+#   log.write(str, cb)
+#     cb(err)
+export !function create (file_path, max_size, cb)
+  createStream file_path, !(err, stream, size) ->
+    return cb(err) if err
+
+    log = new EventEmitter()
+    stream.on \error, (error) -> log.emit \error, error
+    log.write = !(str) ->
+      stream.write(str)
+      size += str.length
+      if size >= max_size
+        fs.rename file_path, archiveName(file_path), !(err) ->
+          return log.emit('error', err) if err
+          createStream file_path, !(err, new_stream, new_size) ->
+            return log.emit('error', err) if err
+            new_stream.on \error, (error) -> log.emit \error, error
+            size := new_size
+            stream := new_stream
+    cb null, log
+
+!function getFileSize (file_path, cb)
+  fs.stat file_path, !(err, stats) ->
+    if err
+      if err.code is \ENOENT
+        return cb(null, 0)
+      else
+        return cb(err)
+    else
+      cb(null, stats.size)
+
+!function createStream (file_path, cb)
+  mkdirp path.dirname(file_path), !(err) ->
+    return cb(err) if err
+    getFileSize file_path, !(err, size) ->
+      return cb(err) if err
+      stream = fs.createWriteStream file_path, flags: 'a'
+      cb(null, stream, size)
+
+function archiveName(file_path)
+  dirname = path.dirname(file_path)
+  extname = path.extname(file_path)
+  basename = path.basename(file_path, extname)
+  timestamp = (new Date()).getTime()
+  path.join(dirname, "#{basename}-#{timestamp}#{extname}")

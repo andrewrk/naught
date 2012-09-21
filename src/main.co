@@ -64,6 +64,7 @@ function getDaemonMessages (socket_path, cbs)
       options.log,
       options.stderr,
       options.stdout,
+      options.'max-log-size',
       options.tmp,
       script,
     ].concat(argv), {
@@ -164,6 +165,12 @@ cmds =
 
         Starts server.js as a daemon passing script-options as command
         line arguments.
+
+        Each worker's stdout and stderr are redirected to a log files
+        specified by the `stdout` and `stderr` parameters. When a log file
+        becomes larger than the `max-log-size` parameter, the log file
+        is gzipped and renamed using the current date and time, and a new
+        log file is opened.
 
         Available options and their defaults:
 

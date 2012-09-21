@@ -4,33 +4,42 @@ const
   {spawn} = require('child_process')
   net = require('net')
   assert = require('assert')
+  async = require('async')
   json_socket = require('./json_socket')
+  createLog = require('./log').create
 
 argv = process.argv.slice(2)
-worker_count = argv.shift()
+worker_count = parseInt(argv.shift())
 pidfile = argv.shift()
 log_naught_path = argv.shift()
 log_stderr_path = argv.shift()
 log_stdout_path = argv.shift()
+max_log_size = parseInt(argv.shift())
 tmp = argv.shift()
 script = argv.shift()
 
-log_naught = fs.createWriteStream log_naught_path,
-  flags: 'a'
-  encoding: 'utf8'
-log_stderr = fs.createWriteStream log_stderr_path,
-  flags: 'a'
-  encoding: 'utf8'
-log_stdout = fs.createWriteStream log_stdout_path,
-  flags: 'a'
-  encoding: 'utf8'
+logs = null
+async.parallel {
+  naught: !(cb) -> createLog(log_naught_path, max_log_size, cb)
+  stderr: !(cb) -> createLog(log_stderr_path, max_log_size, cb)
+  stdout: !(cb) -> createLog(log_stdout_path, max_log_size, cb)
+}, !(err, results) ->
+  assert.ifError(err)
+  logs := results
+  logs.stderr.on \error, !(err) ->
+    process.stderr.write("Error writing to #{log_stderr_path}: #{err.stack}")
+  logs.stdout.on \error, !(err) ->
+    process.stderr.write("Error writing to #{log_stdout_path}: #{err.stack}")
+  logs.naught.on \error, !(err) ->
+    process.stderr.write("Error writing to #{log_naught_path}: #{err.stack}")
+  startIpcServerAndThenMaster()
 
 !function log (str)
-  log_naught.write str
-  process.stdout.write str
+  logs.naught.write(str)
+  process.stderr.write(str)
 
 !function onMessage (message)
-  log_naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
+  logs.naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
   if socket? then json_socket.send(socket, message)
 
 !function tryUnlink (file)
@@ -44,51 +53,54 @@ function getTempName
   "#{now.getYear()}-#{now.getMonth()}-#{now.getDay()}-#{process.pid}-#{(Math.random() * 0x100000000 + 1).toString(36)}"
 
 # server to emit messages for deploy events
-socket_path = path.resolve(tmp, getTempName())
 socket = null
-child = null
-server = net.createServer !(new_socket) ->
-  assert socket!?, "only one connection to daemon allowed"
-  socket := new_socket
-  socket.once \error, !(err) ->
-    log "Error: ipc channel socket: #{err.stack}"
-  socket.once \end, !->
-    socket := null
-  json_socket.listen socket, !(msg) ->
-    if msg.action is \NaughtDeploy
-      process.env? = msg.environment
-    child?send msg
-server.listen socket_path, !->
-  child := spawn(process.execPath, [
-    path.join(__dirname, "master.js"),
-    worker_count,
-    script,
-  ].concat(argv), {
-    env: process.env
-    stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
-    cwd: process.cwd()
-  })
+!function startIpcServerAndThenMaster
+  socket_path = path.resolve(tmp, getTempName())
+  child = null
+  server = net.createServer !(new_socket) ->
+    if socket?
+      log "Warning: Only one connection to daemon allowed. Terminating old connection."
+      socket.destroy()
+    socket := new_socket
+    socket.on \error, !(err) ->
+      log "Error: ipc channel socket: #{err.stack}"
+    socket.once \end, !->
+      socket := null
+    json_socket.listen socket, !(msg) ->
+      if msg.action is \NaughtDeploy
+        process.env? = msg.environment
+      child?send msg
+  server.listen socket_path, !->
+    child := spawn(process.execPath, [
+      path.join(__dirname, "master.js"),
+      worker_count,
+      script,
+    ].concat(argv), {
+      env: process.env
+      stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
+      cwd: process.cwd()
+    })
 
-  child.on \message, onMessage
+    child.on \message, onMessage
 
-  child.stdout.pipe(log_stdout)
-  child.stderr.pipe(log_stderr)
-  child.on \exit, !->
-    onMessage do
-      event: \Shutdown
-      old_count: 0
-      new_count: 0
-      dying_count: 0
-    server.close()
-    tryUnlink pidfile
-  obj =
-    master: child.pid
-    daemon: process.pid
-    socket: socket_path
-    script: script
-    log:
-      naught: log_naught_path
-      stderr: log_stderr_path
-      stdout: log_stdout_path
-  fs.writeFile pidfile, JSON.stringify(obj), \utf8, !(err) ->
-    if err then log "Error: Unable to write pidfile to #{pidfile}.\n#{err.stack}\n"
+    child.stdout.on \data, logs.stdout.write
+    child.stderr.on \data, logs.stderr.write
+    child.on \exit, !->
+      onMessage do
+        event: \Shutdown
+        old_count: 0
+        new_count: 0
+        dying_count: 0
+      server.close()
+      tryUnlink pidfile
+    obj =
+      master: child.pid
+      daemon: process.pid
+      socket: socket_path
+      script: script
+      log:
+        naught: log_naught_path
+        stderr: log_stderr_path
+        stdout: log_stdout_path
+    fs.writeFile pidfile, JSON.stringify(obj), \utf8, !(err) ->
+      if err then log "Error: Unable to write pidfile to #{pidfile}.\n#{err.stack}\n"

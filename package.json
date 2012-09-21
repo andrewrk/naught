@@ -21,6 +21,7 @@
     "coco": "~0.8.1"
   },
   "dependencies": {
-    "async": "~0.1.22"
+    "async": "~0.1.22",
+    "mkdirp": "~0.3.4"
   }
 }
