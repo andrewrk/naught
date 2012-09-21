@@ -1,6 +1,6 @@
 {
   "name": "naught",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "zero downtime deployment for your node.js server",
   "scripts": {
     "dev": "npm install && coke watch"
