@@ -49,43 +49,48 @@ CLI:
         Starts server.js as a daemon passing script-options as command
         line arguments.
 
+        Each worker's stdout and stderr are redirected to a log files
+        specified by the `stdout` and `stderr` parameters. When a log file
+        becomes larger than `max-log-size`, the log file is renamed using the
+        current date and time, and a new log file is opened.
+
+        Creates an `ipc-file` which naught uses to communicate with your
+        server once it has started.
+
         Available options and their defaults:
 
         --worker-count 1
-        --pidfile naught.json
+        --ipc-file naught.ipc
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
-        --cwd (the current working directory)
-        --tmp (the temp dir appropriate for your OS)
+        --cwd .
 
 
-    naught stop [options] [pidfile]
+    naught stop [options] [ipc-file]
 
-        Stops the running server which created the pidfile.
-        Uses `naught.json` by default.
+        Stops the running server which created `ipc-file`.
+        Uses `naught.ipc` by default.
 
         This sends the 'shutdown' message to all the workers and waits for
         them to exit gracefully.
 
-        If you specify a timeout, naught will wait for the seconds to pass,
-        and then send a SIGTERM to kill your server. Naught will then wait
-        for timeout again, finally sending a SIGKILL to your server if it
-        has not exited on its own.
+        If you specify a timeout, naught will forcefully kill your workers
+        if they do not shut down gracefully within the timeout.
 
         Available options and their defaults:
 
             --timeout none
 
 
-    naught status [pidfile]
+    naught status [ipc-file]
 
         Displays whether a server is running or not.
-        Uses `naught.json` by default.
+        Uses `naught.ipc` by default.
 
 
-    naught deploy [options] [pidfile]
+    naught deploy [options] [ipc-file]
 
         Replaces workers with new workers using new code and optionally
         the environment variables from this command.
@@ -95,25 +100,38 @@ CLI:
         downtime if any of the new workers fail and provides the ability to
         cleanly abort the deployment if it hangs.
 
-        Uses `naught.json` by default.
+        A hanging deploy happens when a new worker fails to emit the 'online'
+        message, or when an old worker fails to shutdown upon receiving the
+        'shutdown' message. A keyboard interrupt will cause a deploy-abort,
+        cleanly and with zero downtime.
+
+        If `timeout` is specified, naught will automatically abort the deploy
+        if it does not finish within those seconds.
+
+        Uses `naught.ipc` by default.
 
         Available options and their defaults:
 
             --replace-env true
+            --timeout none
 
 
-    naught deploy-abort [pidfile]
+    naught deploy-abort [icp-file]
 
         Aborts a hanging deploy. A hanging deploy happens when a new worker
         fails to emit the 'online' message, or when an old worker fails
         to shutdown upon receiving the 'shutdown' message.
 
-        Uses `naught.json` by default.
+        When deploying, a keyboard interrupt will cause a deploy-abort,
+        so the times you actually have to run this command will be few and
+        far between.
+
+        Uses `naught.ipc` by default.
 
 
     naught help [cmd]
 
-        Displays help for cmd
+        Displays help for cmd.
 
 
 installation:
