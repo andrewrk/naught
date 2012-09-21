@@ -47,11 +47,11 @@ socket = null
   child = null
   server = net.createServer !(new_socket) ->
     if socket?
-      log "Warning: Only one connection to daemon allowed. Terminating old connection."
+      log "Warning: Only one connection to daemon allowed. Terminating old connection.\n"
       socket.destroy()
     socket := new_socket
     socket.on \error, !(err) ->
-      log "Error: ipc channel socket: #{err.stack}"
+      log "Error: ipc channel socket: #{err.stack}\n"
     socket.once \end, !->
       socket := null
     json_socket.listen socket, !(msg) ->
