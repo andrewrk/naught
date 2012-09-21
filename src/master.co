@@ -25,6 +25,7 @@ process.on \message, !(message) ->
       process.env? = message.environment
       deployStart()
     case \NaughtDeployAbort then deployAbort()
+    case \NaughtShutdown then shutdownAll()
     default then event \UnrecognizedMessage
 
 event \Bootup
@@ -91,16 +92,22 @@ function makeWorker
     event \NewOnline
     cb()
 
-!function shutdownOld (cb)
-  assert workers.count > 0
+!function shutdownOneWorker (collection, cb)
+  assert collection.count > 0
   event \ShutdownOld
-  addWorker dying_workers, dying_worker = shiftWorker(workers)
+  addWorker dying_workers, dying_worker = shiftWorker(collection)
   dying_worker.disconnect()
   dying_worker.send \shutdown
   dying_worker.once \exit, !->
     event \OldExit
     removeWorker dying_workers, dying_worker.process.pid
     cb()
+
+!function shutdownOld (cb)
+  shutdownOneWorker(workers, cb)
+
+!function shutdownNew (cb)
+  shutdownOneWorker(new_workers, cb)
 
 !function deployStart
   if waiting_for?
@@ -136,3 +143,9 @@ function makeWorker
         dying_worker.destroy()
     default
       event \ErrorNoDeployInProgress
+
+!function shutdownAll
+  waiting_for := \shutdown
+  funcs_old = (shutdownOld for i from 0 til workers.count)
+  funcs_new = (shutdownNew for i from 0 til new_workers.count)
+  async.parallel funcs_old.concat(funcs_new), !-> process.exit(0)

@@ -6,7 +6,6 @@ features:
  * redirect worker stdout and stderr to rotating log files
    - TODO
  * runs as daemon, providing ability to start and stop
-   - TODO: when stopping, first try 'shutdown', timeout to sigterm, timeout to sigkill
 
 usage:
 
@@ -59,8 +58,8 @@ CLI:
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
-        --cwd .
-        --tmp /tmp
+        --cwd (the current working directory)
+        --tmp (the temp dir appropriate for your OS)
 
 
     naught stop [options] [pidfile]
@@ -68,12 +67,17 @@ CLI:
         Stops the running server which created the pidfile.
         Uses `naught.json` by default.
 
-        This sends SIGTERM to the process and waits for timeout, then
-        sends SIGKILL if the process has not already exited.
+        This sends the 'shutdown' message to all the workers and waits for
+        them to exit gracefully.
+
+        If you specify a timeout, naught will wait for the seconds to pass,
+        and then send a SIGTERM to kill your server. Naught will then wait
+        for timeout again, finally sending a SIGKILL to your server if it
+        has not exited on its own.
 
         Available options and their defaults:
 
-            --timeout 5
+            --timeout none
 
 
     naught status [pidfile]

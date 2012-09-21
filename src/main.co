@@ -77,17 +77,42 @@ function getDaemonMessages (socket_path, cbs)
 
 !function stopScript (options, pidfile)
   readPids pidfile, !(pids) ->
-    try
-      process.kill(pids.master, 'SIGTERM')
-    catch e
-      if e.code is \ESRCH
-        console.error("No process killed with pid #{pids.master}.")
-        console.error("`rm #{pidfile}` manually after ensuring your server is not already running.")
-      else
-        throw e
+    timeout_term = null
+    timeout_kill = null
+    {timeout} = options
+    if timeout?
+      timeout_term = wait timeout, !->
+        pid = pids.master
+        console.error "Timeout. Sending SIGTERM"
+        tryProcessKill(pid, 'SIGTERM', pidfile)
+        timeout_kill := wait timeout, !->
+          console.error "Timeout. Sending SIGKILL"
+          tryProcessKill(pid, 'SIGKILL', pidfile)
+    socket = getDaemonMessages pids.socket,
+      ready: !->
+        json_socket.send socket, action: \NaughtShutdown
+      event: !(msg) ->
+        if msg.event is \Shutdown
+          clearTimeout(timeout_term) if timeout_term?
+          clearTimeout(timeout_kill) if timeout_kill?
+          process.exit(0)
+        else
+          printDaemonMsg msg
 
 !function printDaemonMsg (msg)
   console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
+
+function tryProcessKill (pid, signal, pidfile)
+  try
+    process.kill(pid, signal)
+  catch e
+    if e.code is \ESRCH
+      console.error("No process killed with pid #pid.")
+      console.error("`rm #pidfile` manually after ensuring your server is not already running.")
+      process.exit(1)
+    else
+      throw e
+  return true
 
 !function deploy (options, pidfile)
   readPids pidfile, !(pids) ->
@@ -177,19 +202,25 @@ cmds =
         Stops the running server which created the pidfile.
         Uses `#DEFAULT_PIDFILE` by default.
 
-        This sends SIGTERM to the process and waits for timeout, then
-        sends SIGKILL if the process has not already exited.
+        This sends the 'shutdown' message to all the workers and waits for
+        them to exit gracefully.
+
+        If you specify a timeout, naught will wait for the seconds to pass,
+        and then send a SIGTERM to kill your server. Naught will then wait
+        for timeout again, finally sending a SIGKILL to your server if it
+        has not exited on its own.
 
         Available options and their defaults:
 
-            --timeout 5
+            --timeout none
     """
     fn: (argv) ->
       options =
-        timeout: '5'
+        timeout: 'none'
       [err, pidfile or DEFAULT_PIDFILE] = chompArgv(options, argv)
       if not err and argv.length is 0
         options.timeout = parseFloat(options.timeout)
+        options.timeout = null if isNaN(options.timeout)
         stopScript(options, pidfile)
         true
       else
