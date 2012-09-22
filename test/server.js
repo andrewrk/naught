@@ -17,3 +17,5 @@ http.createServer(function(req, resp) {
   console.error("stderr: listening");
   process.send("online");
 });
+process.send("trash");
+process.send({a_trash_message: "hello"});
