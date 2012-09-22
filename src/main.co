@@ -31,6 +31,12 @@ function connectToDaemon (socket_path, cbs)
 !function assertErrorIsFromInvalidSocket (error)
   throw error unless error.code is \ENOENT
 
+!function exitWithConnRefusedMsg (socket_path)
+  console.error "unable to connect to ipc-file `#socket_path`"
+  console.error "\n1. the ipc file specified is invalid, or"
+  console.error "2. the daemon process died unexpectedly"
+  process.exit(1)
+
 function getDaemonMessages (socket_path, cbs)
   socket = connectToDaemon(socket_path, cbs)
   socket.on \error, !(error) ->
@@ -38,10 +44,7 @@ function getDaemonMessages (socket_path, cbs)
       console.error "server not running"
       process.exit(1)
     else if error.code is \ECONNREFUSED
-      console.error "unable to connect to ipc-file `#socket_path`\n"
-      console.error "1. the ipc file specified is invalid, or"
-      console.error "2. the daemon process died unexpectedly"
-      process.exit(1)
+      exitWithConnRefusedMsg(socket_path)
     else
       throw error
   socket
@@ -62,8 +65,7 @@ function getDaemonMessages (socket_path, cbs)
         printDaemonMsg msg
   socket.on \error, !(error) ->
     if error.code is \ECONNREFUSED
-      console.error "unable to connect to ipc-file #socket_path"
-      process.exit(1)
+      exitWithConnRefusedMsg(options.'ipc-file')
     else if error.code is \ENOENT
       # no server running
       child = spawn(process.execPath, [
