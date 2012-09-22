@@ -119,7 +119,7 @@ function getDaemonMessages (socket_path, cbs)
       setAbortKeyboardHook()
       json_socket.send socket,
         action: \NaughtDeploy
-        environment: if options.'replace-env' then process.env else null
+        environment: if options.'override-env' then process.env else {}
         timeout: options.timeout
     event: !(msg) ->
       switch msg.event
@@ -267,20 +267,25 @@ cmds =
         If `timeout` is specified, naught will automatically abort the deploy
         if it does not finish within those seconds.
 
+        If `override-env` is true, the environment varibables that are set with
+        this command are used to override the original environment variables
+        used with the `start` command. If any variables are missing, the
+        original values are left intact.
+
         Uses `#DEFAULT_IPC_FILE` by default.
 
         Available options and their defaults:
 
-            --replace-env true
+            --override-env true
             --timeout none
     """
     fn: (argv) ->
       options =
-        'replace-env': 'true'
+        'override-env': 'true'
         'timeout': 'none'
       [err, ipc_file or DEFAULT_IPC_FILE] = chompArgv(options, argv)
       if not err and argv.length is 0
-        options.'replace-env' = options.'replace-env' is \true
+        options.'override-env' = options.'override-env' is \true
         options.timeout = parseFloat(options.timeout)
         options.timeout = null if isNaN(options.timeout)
         deploy(options, ipc_file)

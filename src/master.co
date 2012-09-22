@@ -23,7 +23,7 @@ abort_timeout = null
 process.on \message, !(message) ->
   switch message.action
     case \NaughtDeploy
-      process.env? = message.environment
+      process.env <<< message.environment
       deployStart()
       if (timeout = message.timeout)?
         abort_timeout := setTimeout(deployAbort, timeout * 1000)

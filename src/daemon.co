@@ -56,7 +56,7 @@ socket = null
       socket := null
     json_socket.listen socket, !(msg) ->
       if msg.action is \NaughtDeploy
-        process.env? = msg.environment
+        process.env <<< msg.environment
       child?send msg
   server.listen socket_path, !->
     process.send(\IpcListening)
