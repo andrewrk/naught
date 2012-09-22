@@ -60,6 +60,7 @@ steps = [
       cb();
     });
   },
+  // ability to query status of a running server
   function (cb) {
     naught_exec(["status"], function(stdout, stderr, code) {
       assertEqual(stderr, "");
@@ -68,6 +69,7 @@ steps = [
       cb();
     });
   },
+  // ability to stop a running server
   function (cb) {
     naught_exec(["stop"], function(stdout, stderr, code) {
       assertEqual(stderr, "event: ShutdownOld, old: 1, new: 0, dying: 0\nevent: OldExit, old: 0, new: 0, dying: 1\n");
@@ -76,6 +78,7 @@ steps = [
       cb();
     });
   },
+  // stopping a server twice prints helpful output
   function (cb) {
     naught_exec(["stop"], function(stdout, stderr, code) {
       assertEqual(stdout, "");
@@ -84,6 +87,7 @@ steps = [
       cb();
     });
   },
+  // server writes to default log files
   function (cb) {
     async.parallel([
       function (cb) {
