@@ -1,6 +1,6 @@
 const
   fs = require('fs')
-  mkdirp = require('mkdirp')
+  fse = require('fs-extra')
   path = require('path')
   {EventEmitter} = require('events')
 
@@ -37,7 +37,7 @@ export !function create (file_path, max_size, cb)
       cb(null, stats.size)
 
 !function createStream (file_path, cb)
-  mkdirp path.dirname(file_path), !(err) ->
+  fse.mkdir path.dirname(file_path), !(err) ->
     return cb(err) if err
     getFileSize file_path, !(err, size) ->
       return cb(err) if err

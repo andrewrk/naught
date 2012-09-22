@@ -23,6 +23,6 @@
   },
   "dependencies": {
     "async": "~0.1.22",
-    "mkdirp": "~0.3.4"
+    "fs-extra": "~0.2.1"
   }
 }

@@ -1,6 +1,7 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count;
+var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, v1_code, v2_code, serverjs;
 
 fs = require('fs');
+fse = require('fs-extra');
 http = require('http');
 spawn = require('child_process').spawn;
 path = require("path");
@@ -10,6 +11,9 @@ async = require("async");
 root = path.join(__dirname, "..");
 test_root = path.join(root, "test");
 naught_main = path.join(root, "lib", "main.js");
+v1_code = path.join(test_root, "server1.js")
+v2_code = path.join(test_root, "server2.js")
+serverjs = path.join(test_root, "server.js")
 port = 11904;
 hostname = 'localhost';
 timeout = 5;
@@ -55,6 +59,12 @@ function naught_exec(args, env, cb) {
 }
 
 steps = [
+  {
+    info: "use version 1 of the server code",
+    fn: function (cb) {
+      fse.copy(v1_code, serverjs, cb);
+    },
+  },
   {
     info: "ability to start a server",
     fn: function (cb) {
@@ -106,10 +116,16 @@ steps = [
           body += data;
         });
         res.on('end', function() {
-          assertEqual(body, "sup dawg");
+          assertEqual(body, "server1 sup dawg");
           cb();
         });
       }).end();
+    },
+  },
+  {
+    info: "use version 2 of the server code",
+    fn: function (cb) {
+      fse.copy(v2_code, serverjs, cb);
     },
   },
   {
@@ -142,7 +158,7 @@ steps = [
           body += data;
         });
         res.on('end', function() {
-          assertEqual(body, "hola");
+          assertEqual(body, "server2 hola");
           cb();
         });
       }).end();
@@ -182,6 +198,9 @@ steps = [
         },
         function (cb) {
           fs.unlink(path.join(test_root, "stdout.log"), cb);
+        },
+        function (cb) {
+          fs.unlink(serverjs, cb);
         },
       ], cb);
     },
