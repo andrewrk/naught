@@ -175,6 +175,10 @@ cmds =
         becomes larger than `max-log-size`, the log file is renamed using the
         current date and time, and a new log file is opened.
 
+        With naught, you can use `console.log` and friends. Because naught
+        pipes the output into a log file, node.js treats stdout and stderr
+        as asynchronous streams.
+
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 

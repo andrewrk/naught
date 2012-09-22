@@ -54,6 +54,10 @@ CLI:
         becomes larger than `max-log-size`, the log file is renamed using the
         current date and time, and a new log file is opened.
 
+        With naught, you can use `console.log` and friends. Because naught
+        pipes the output into a log file, node.js treats stdout and stderr
+        as asynchronous streams.
+
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 
@@ -108,11 +112,16 @@ CLI:
         If `timeout` is specified, naught will automatically abort the deploy
         if it does not finish within those seconds.
 
+        If `override-env` is true, the environment varibables that are set with
+        this command are used to override the original environment variables
+        used with the `start` command. If any variables are missing, the
+        original values are left intact.
+
         Uses `naught.ipc` by default.
 
         Available options and their defaults:
 
-            --replace-env true
+            --override-env true
             --timeout none
 
 
