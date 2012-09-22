@@ -42,11 +42,21 @@ function naught_exec(args, cb) {
 }
 
 steps = [
+  // ability to start a server
   function (cb) {
     naught_exec(["start", "server.js"], function(stdout, stderr, code) {
       assertEqual(stderr, "event: Bootup, old: 0, new: 0, dying: 0\n")
       assertEqual(stdout, "server is running\nworkers online: 1\n")
       assertEqual(code, 0)
+      cb();
+    });
+  },
+  // starting a server twice prints the status of the running server
+  function (cb) {
+    naught_exec(["start", "server.js"], function(stdout, stderr, code) {
+      assertEqual(stderr, "");
+      assertEqual(stdout, "server is running\nworkers online: 1\n");
+      assertEqual(code, 1)
       cb();
     });
   },
