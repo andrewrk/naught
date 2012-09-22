@@ -178,13 +178,13 @@ steps = [
   {
     info: "stopping a server twice prints helpful output",
     fn: function (cb) {
-    naught_exec(["stop"], {}, function(stdout, stderr, code) {
-      assertEqual(stdout, "");
-      assertEqual(stderr, "server not running\n");
-      assertEqual(code, 1)
-      cb();
-    });
-  },
+      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+        assertEqual(stdout, "");
+        assertEqual(stderr, "server not running\n");
+        assertEqual(code, 1)
+        cb();
+      });
+    },
   },
   {
     info: "server writes to default log files",
