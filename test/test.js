@@ -187,6 +187,47 @@ steps = [
     },
   },
   {
+    info: "redirect stdout to log file",
+    fn: function (cb) {
+      fs.readFile(path.join(test_root, "stdout.log"), "utf8", function (err, contents) {
+        assertEqual(contents, "server1 attempting to listen\n" +
+          "server2 attempting to listen\n");
+        cb();
+      });
+    },
+  },
+  {
+    info: "redirect stderr to log file",
+    fn: function (cb) {
+      fs.readFile(path.join(test_root, "stderr.log"), "utf8", function (err, contents) {
+        assertEqual(contents, "server1 listening\n" +
+          "server2 listening\n");
+        cb();
+      });
+    },
+  },
+  {
+    info: "naught log contains events",
+    fn: function (cb) {
+      fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
+        assertEqual(contents, "event: Bootup, old: 0, new: 0, dying: 0\n" +
+          "event: Status, old: 1, new: 0, dying: 0\n" +
+          "event: Status, old: 1, new: 0, dying: 0\n" +
+          "event: WorkerOnline, old: 1, new: 0, dying: 0\n" +
+          "event: Status, old: 1, new: 0, dying: 0\n" +
+          "event: SpawnNew, old: 1, new: 0, dying: 0\n" +
+          "event: NewOnline, old: 1, new: 1, dying: 0\n" +
+          "event: ShutdownOld, old: 1, new: 1, dying: 0\n" +
+          "event: OldExit, old: 0, new: 1, dying: 1\n" +
+          "event: Ready, old: 0, new: 1, dying: 0\n" +
+          "event: ShutdownOld, old: 1, new: 0, dying: 0\n" +
+          "event: OldExit, old: 0, new: 0, dying: 1\n" +
+          "event: Shutdown, old: 0, new: 0, dying: 0\n");
+        cb();
+      });
+    },
+  },
+  {
     info: "server writes to default log files",
     fn: function (cb) {
       async.parallel([
