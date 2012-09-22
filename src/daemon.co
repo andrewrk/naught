@@ -59,6 +59,7 @@ socket = null
         process.env? = msg.environment
       child?send msg
   server.listen socket_path, !->
+    process.send(\IpcListening)
     child := spawn(process.execPath, [
       path.join(__dirname, "master.js"),
       worker_count,

@@ -60,7 +60,7 @@ function getDaemonMessages (socket_path, cbs)
         printDaemonMsg msg
   socket.on \error, !(error) ->
     if error.code is \ECONNREFUSED
-      console.error "unable to connect to ipc-file #{socket_path}"
+      console.error "unable to connect to ipc-file #socket_path"
       process.exit(1)
     else if error.code is \ENOENT
       # no server running
@@ -75,11 +75,14 @@ function getDaemonMessages (socket_path, cbs)
         script,
       ].concat(argv), {
         env: process.env
-        stdio: \inherit
+        stdio: [process.stdin, process.stdout, process.stderr, \ipc]
         detached: true
         cwd: options.cwd
       })
       child.unref()
+      child.on \message, !(msg) ->
+        assert msg is \IpcListening
+        displayStatus(options.'ipc-file')
     else
       throw error
 
@@ -182,7 +185,6 @@ cmds =
         --cwd #{process.cwd()}
       """
     fn: (argv) ->
-      # parse options
       options =
         'worker-count': '1'
         'ipc-file': DEFAULT_IPC_FILE

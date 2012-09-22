@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "description": "zero downtime deployment for your node.js server",
   "scripts": {
-    "dev": "npm install && coke watch"
+    "dev": "npm install && coke watch",
+    "test": "node test/test.js"
   },
   "bin": {
     "naught": "./lib/main.js"
