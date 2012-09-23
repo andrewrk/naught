@@ -3,6 +3,7 @@ const
   fse = require('fs-extra')
   path = require('path')
   {EventEmitter} = require('events')
+  zlib = require('zlib')
 
 # cb(err, log)
 #   log.write(str, cb)
@@ -11,19 +12,37 @@ export !function create (file_path, max_size, cb)
   createStream file_path, !(err, stream, size) ->
     return cb(err) if err
 
+    pending = null
     log = new EventEmitter()
     stream.on \error, (error) -> log.emit \error, error
     log.write = !(str) ->
-      stream.write(str)
+      flushed = stream.write(str)
       size += str.length
-      if size >= max_size
-        fs.rename file_path, archiveName(file_path), !(err) ->
+      if pending is \flush
+        if flushed
+          pending := null
+        else
+          stream.once \drain, !-> pending := null
+      if pending!? and size >= max_size
+        pending := \rename
+        archive_name = archiveName(file_path)
+        fs.rename file_path, archive_name, !(err) ->
           return log.emit('error', err) if err
           createStream file_path, !(err, new_stream, new_size) ->
             return log.emit('error', err) if err
+            stream.once \close, !->
+              gzip = zlib.createGzip()
+              inp = fs.createReadStream(archive_name)
+              out = fs.createWriteStream(archive_name + ".gz")
+              inp.pipe(gzip).pipe(out)
+              out.once \close, !->
+                fs.unlink archive_name, !(err) ->
+                  return log.emit('error', err) if err
+            stream.end()
             new_stream.on \error, (error) -> log.emit \error, error
             size := new_size
             stream := new_stream
+            pending := \flush
     cb null, log
 
 !function getFileSize (file_path, cb)

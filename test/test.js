@@ -1,4 +1,4 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, v1_code, v2_code, serverjs;
+var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse;
 
 fs = require('fs');
 fse = require('fs-extra');
@@ -11,9 +11,6 @@ async = require("async");
 root = path.join(__dirname, "..");
 test_root = path.join(root, "test");
 naught_main = path.join(root, "lib", "main.js");
-v1_code = path.join(test_root, "server1.js")
-v2_code = path.join(test_root, "server2.js")
-serverjs = path.join(test_root, "server.js")
 port = 11904;
 hostname = 'localhost';
 timeout = 5;
@@ -58,13 +55,48 @@ function naught_exec(args, env, cb) {
   });
 }
 
-steps = [
-  {
-    info: "use version 1 of the server code",
+function use(script) {
+  return {
+    info: "(test setup) use " + script,
     fn: function (cb) {
-      fse.copy(v1_code, serverjs, cb);
+      fse.copy(path.join(test_root, script), path.join(test_root, "server.js"), cb);
     },
-  },
+  };
+}
+
+function mkdir(dir) {
+  return {
+    info: "(test setup) mkdir " + dir,
+    fn: function (cb) {
+      fse.mkdir(path.join(test_root, dir), cb);
+    },
+  };
+}
+
+function rm(files) {
+  return {
+    info: "(test setup) rm " + files.join(" "),
+    fn: function (cb) {
+      async.forEach(files, function (item, cb) {
+        fs.unlink(path.join(test_root, item), cb);
+      }, cb);
+    },
+  }
+}
+
+function remove(files) {
+  return {
+    info: "(test setup) rm -rf " + files.join(" "),
+    fn: function (cb) {
+      async.forEach(files, function (item, cb) {
+        fse.remove(path.join(test_root, item), cb);
+      }, cb);
+    },
+  }
+}
+
+steps = [
+  use("server1.js"),
   {
     info: "ability to start a server",
     fn: function (cb) {
@@ -122,12 +154,7 @@ steps = [
       }).end();
     },
   },
-  {
-    info: "use version 2 of the server code",
-    fn: function (cb) {
-      fse.copy(v2_code, serverjs, cb);
-    },
-  },
+  use("server2.js"),
   {
     info: "ability to deploy to a running server",
     fn: function (cb) {
@@ -227,25 +254,56 @@ steps = [
       });
     },
   },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
+  use("server3.js"),
+  mkdir("foo"),
   {
-    info: "server writes to default log files",
+    info: "cli accepts non-default args",
     fn: function (cb) {
-      async.parallel([
-        function (cb) {
-          fs.unlink(path.join(test_root, "naught.log"), cb);
-        },
-        function (cb) {
-          fs.unlink(path.join(test_root, "stderr.log"), cb);
-        },
-        function (cb) {
-          fs.unlink(path.join(test_root, "stdout.log"), cb);
-        },
-        function (cb) {
-          fs.unlink(serverjs, cb);
-        },
-      ], cb);
+      naught_exec([
+          "start",
+          "--worker-count", "5",
+          "--ipc-file", "some/dir/ipc",
+          "--log", "log/naught/a.log",
+          "--stderr", "log/stderr/b",
+          "--stdout", "log/stdout/c.",
+          "--max-log-size", "100",
+          "--cwd", "foo",
+          "server.js",
+          "--custom1", "aoeu",
+          "herp derp",
+      ], {
+        PORT: port,
+      }, function(stdout, stderr, code) {
+        assertEqual(stderr, "event: Bootup, old: 0, new: 0, dying: 0\n")
+        assertEqual(stdout, "server is running\nworkers online: 5\n")
+        assertEqual(code, 0)
+        cb();
+      });
     },
   },
+  {
+    info: "ability to stop a running server with multiple workers",
+    fn: function (cb) {
+      naught_exec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
+//        assertEqual(stderr,
+//          "event: ShutdownOld, old: 5, new: 0, dying: 0\n" +
+//          "event: ShutdownOld, old: 4, new: 0, dying: 1\n" +
+//          "event: ShutdownOld, old: 3, new: 0, dying: 2\n" +
+//          "event: ShutdownOld, old: 2, new: 0, dying: 3\n" +
+//          "event: ShutdownOld, old: 1, new: 0, dying: 4\n" +
+//          "event: OldExit, old: 0, new: 0, dying: 5\n" +
+//          "event: OldExit, old: 0, new: 0, dying: 4\n" +
+//          "event: OldExit, old: 0, new: 0, dying: 3\n" +
+//          "event: OldExit, old: 0, new: 0, dying: 2\n" +
+//          "event: OldExit, old: 0, new: 0, dying: 1\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  remove(["foo", "log", "some", "server.js"]),
 ];
 
 function doStep() {
@@ -254,7 +312,7 @@ function doStep() {
   step = steps.shift();
   process.stderr.write(step.info + "...")
   interval = setTimeout(function() {
-    process.stderr.write("timeout\n");
+    fs.writeSync(process.stderr.fd, "timeout\n")
     process.exit(1);
   }, timeout * 1000);
   step.fn(function (err) {

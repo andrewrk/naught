@@ -3,7 +3,7 @@ features:
  * zero downtime code hot-swapping
  * ability to change environment variables of workers with zero downtime
  * resuscitation - when a worker dies it is restarted
- * redirect worker stdout and stderr to rotating log files
+ * redirect worker stdout and stderr to rotating gzipped log files
  * runs as daemon, providing ability to start and stop
 
 usage:

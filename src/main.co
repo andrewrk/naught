@@ -7,7 +7,9 @@ const
   json_socket = require('./json_socket')
   {spawn} = require('child_process')
   path = require('path')
-const DEFAULT_IPC_FILE = 'naught.ipc'
+
+  DEFAULT_IPC_FILE = 'naught.ipc'
+  CWD = process.cwd()
 
 function chompArgv(obj, argv)
   while argv.length
@@ -69,14 +71,14 @@ function getDaemonMessages (socket_path, cbs)
     else if error.code is \ENOENT
       # no server running
       child = spawn(process.execPath, [
-        path.join(__dirname, "daemon.js"),
+        path.resolve(__dirname, "daemon.js"),
         options.'worker-count',
-        options.'ipc-file',
-        options.log,
-        options.stderr,
-        options.stdout,
+        path.resolve(CWD, options.'ipc-file'),
+        path.resolve(CWD, options.log),
+        path.resolve(CWD, options.stderr),
+        path.resolve(CWD, options.stdout),
         options.'max-log-size',
-        script,
+        path.resolve(CWD, script),
       ].concat(argv), {
         env: process.env
         stdio: [process.stdin, process.stdout, process.stderr, \ipc]
@@ -190,7 +192,7 @@ cmds =
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
-        --cwd #{process.cwd()}
+        --cwd #CWD
       """
     fn: (argv) ->
       options =
@@ -200,7 +202,7 @@ cmds =
         'stdout': 'stdout.log'
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
-        'cwd': process.cwd()
+        'cwd': CWD
       [err, script] = chompArgv(options, argv)
       if not err and script?
         options.'worker-count' = parseInt(options.'worker-count')

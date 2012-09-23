@@ -1,5 +1,6 @@
 const
   fs = require('fs')
+  fse = require('fs-extra')
   path = require('path')
   {spawn} = require('child_process')
   net = require('net')
@@ -8,30 +9,35 @@ const
   json_socket = require('./json_socket')
   createLog = require('./log').create
 
-argv = process.argv.slice(2)
-worker_count = parseInt(argv.shift())
-socket_path = argv.shift()
-log_naught_path = argv.shift()
-log_stderr_path = argv.shift()
-log_stdout_path = argv.shift()
-max_log_size = parseInt(argv.shift())
-script = argv.shift()
+  argv = process.argv.slice(2)
+  worker_count = parseInt(argv.shift())
+  socket_path = argv.shift()
+  log_naught_path = argv.shift()
+  log_stderr_path = argv.shift()
+  log_stdout_path = argv.shift()
+  max_log_size = parseInt(argv.shift())
+  script = argv.shift()
 
 logs = null
-async.parallel {
-  naught: !(cb) -> createLog(log_naught_path, max_log_size, cb)
-  stderr: !(cb) -> createLog(log_stderr_path, max_log_size, cb)
-  stdout: !(cb) -> createLog(log_stdout_path, max_log_size, cb)
-}, !(err, results) ->
-  assert.ifError(err)
-  logs := results
-  logs.stderr.on \error, !(err) ->
-    process.stderr.write("Error writing to #{log_stderr_path}: #{err.stack}")
-  logs.stdout.on \error, !(err) ->
-    process.stderr.write("Error writing to #{log_stdout_path}: #{err.stack}")
-  logs.naught.on \error, !(err) ->
-    process.stderr.write("Error writing to #{log_naught_path}: #{err.stack}")
-  startIpcServerAndThenMaster()
+socket = null
+master = null
+server = null
+
+!function createLogs(cb)
+  async.parallel {
+    naught: !(cb) -> createLog(log_naught_path, max_log_size, cb)
+    stderr: !(cb) -> createLog(log_stderr_path, max_log_size, cb)
+    stdout: !(cb) -> createLog(log_stdout_path, max_log_size, cb)
+  }, !(err, results) ->
+    return cb(err) if err
+    logs := results
+    logs.stderr.on \error, !(err) ->
+      log "Error writing to #{log_stderr_path}: #{err.stack}\n"
+    logs.stdout.on \error, !(err) ->
+      log "Error writing to #{log_stdout_path}: #{err.stack}\n"
+    logs.naught.on \error, !(err) ->
+      process.stderr.write("Error writing to #{log_naught_path}: #{err.stack}\n")
+    cb()
 
 !function log (str)
   logs.naught.write(str)
@@ -41,43 +47,53 @@ async.parallel {
   logs.naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
   if socket? then json_socket.send(socket, message)
 
-# server to emit messages for deploy events
-socket = null
-!function startIpcServerAndThenMaster
-  child = null
-  server = net.createServer !(new_socket) ->
-    if socket?
-      log "Warning: Only one connection to daemon allowed. Terminating old connection.\n"
-      socket.destroy()
-    socket := new_socket
-    socket.on \error, !(err) ->
-      log "Error: ipc channel socket: #{err.stack}\n"
-    socket.once \end, !->
-      socket := null
-    json_socket.listen socket, !(msg) ->
-      if msg.action is \NaughtDeploy
-        process.env <<< msg.environment
-      child?send msg
-  server.listen socket_path, !->
-    process.send(\IpcListening)
-    child := spawn(process.execPath, [
-      path.join(__dirname, "master.js"),
-      worker_count,
-      script,
-    ].concat(argv), {
-      env: process.env
-      stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
-      cwd: process.cwd()
-    })
+!function createLogsAndIpcServer(cb)
+  async.parallel [
+    createLogs,
+    !(cb) -> fse.mkdir(path.dirname(socket_path), cb)
+  ], !(err) ->
+    return cb(err) if err
+    server := net.createServer !(new_socket) ->
+      if socket?
+        log "Warning: Only one connection to daemon allowed. Terminating old connection.\n"
+        socket.destroy()
+      socket := new_socket
+      socket.on \error, !(err) ->
+        log "Error: ipc channel socket: #{err.stack}\n"
+      socket.once \end, !->
+        socket := null
+      json_socket.listen socket, !(msg) ->
+        if master?
+          if msg.action is \NaughtDeploy
+            process.env <<< msg.environment
+          master.send msg
+        else
+          json_socket.send socket, event: \ErrorStillBooting
+    server.listen socket_path, !->
+      process.send(\IpcListening)
+      cb()
 
-    child.on \message, onMessage
+!function spawnMaster
+  master := spawn(process.execPath, [
+    path.join(__dirname, "master.js"),
+    worker_count,
+    script,
+  ].concat(argv), {
+    env: process.env
+    stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
+    cwd: process.cwd()
+  })
+  master.on \message, onMessage
+  master.stdout.on \data, logs.stdout.write
+  master.stderr.on \data, logs.stderr.write
+  master.on \exit, !->
+    onMessage do
+      event: \Shutdown
+      old_count: 0
+      new_count: 0
+      dying_count: 0
+    server.close()
 
-    child.stdout.on \data, logs.stdout.write
-    child.stderr.on \data, logs.stderr.write
-    child.on \exit, !->
-      onMessage do
-        event: \Shutdown
-        old_count: 0
-        new_count: 0
-        dying_count: 0
-      server.close()
+createLogsAndIpcServer !(err) ->
+  assert.ifError(err)
+  spawnMaster()
