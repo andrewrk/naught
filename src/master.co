@@ -11,57 +11,81 @@ cluster.setupMaster do
   exec: script
   args: argv
 
-# workers move from here to dying_workers when we ask them to 'shutdown'
-workers = newWorkerCollection()
-# workers go here until they all have emitted 'online'
-new_workers = newWorkerCollection()
-# workers in here have been asked to 'shutdown'
-dying_workers = newWorkerCollection()
+workers =
+  # workers go here until they all have emitted 'online'
+  booting: newWorkerCollection()
+  # workers move from here to 'dying' when we ask them to 'shutdown'
+  online: newWorkerCollection()
+  # workers in here have been asked to 'shutdown'
+  dying: newWorkerCollection()
+  # when deploying, new workers go here until they all have emitted 'online'
+  new_booting: newWorkerCollection()
+  # these are online workers ready to replace old workers
+  new_online: newWorkerCollection()
+worker_status = {}
 waiting_for = null
 
-abort_timeout = null
 process.on \message, !(message) ->
   switch message.action
     case \NaughtDeploy
       process.env <<< message.environment
-      deployStart()
+      timer = null
+      deployStart !->
+        clearTimeout(timer) if timer?
       if (timeout = message.timeout)?
-        abort_timeout := setTimeout(deployAbort, timeout * 1000)
+        timer = wait timeout, !->
+          timer := null
+          deployAbort()
     case \NaughtDeployAbort then deployAbort()
     case \NaughtShutdown
-      shutdownAll()
+      shutdownAll !->
+        clearTimeout(timer) if timer?
+        process.exit(0)
       if (timeout = message.timeout)?
-        setTimeout(destroyAll, timeout * 1000)
+        timer = wait timeout, !->
+          timer := null
+          destroyAll()
     case \NaughtStatus
       event \Status
     default then event \UnrecognizedMessage
 
+addWorker(\booting, makeWorker()) for i from 0 til worker_count
 event \Bootup
-addWorker(workers, makeWorker()) for i from 0 til worker_count
+
+function wait (seconds, cb)
+  setTimeout(cb, seconds * 1000)
 
 function newWorkerCollection then do
   hash: {}
   count: 0
 
-!function addWorker (collection, worker)
+!function setWorkerStatus (worker, status)
+  addWorker status, removeWorker(worker.process.pid)
+
+!function addWorker (status, worker)
   pid = worker.process.pid
+  worker_status[pid] = status
+  collection = workers[status]
   {hash} = collection
   if pid not in hash
     collection.count += 1
   hash[pid] = worker
 
-function removeWorker (collection, pid)
+function removeWorker (pid)
+  status = delete worker_status[pid]
+  collection = workers[status]
   {hash} = collection
   assert pid in hash
   collection.count -= 1
   delete hash[pid]
 
-function shiftWorker (collection)
-  for pid in collection.hash
-    return removeWorker(collection, pid)
+function shiftWorker (status)
+  for pid in workers[status].hash
+    return removeWorker(pid)
   assert false
 
-!function forEachWorker (collection, cb)
+!function forEachWorker (status, cb)
+  collection = workers[status]
   cb(pid, worker) for pid, worker in collection.hash
 
 !function onceOnline (worker, cb)
@@ -77,95 +101,108 @@ function makeWorker
     # ignore if this happened due to a deployment
     return if waiting_for?
 
+    removeWorker(worker.process.pid)
+    addWorker('booting', makeWorker())
     event \WorkerDeath
-    removeWorker(workers, worker.process.pid)
-    addWorker(workers, makeWorker())
   if waiting_for!?
     onceOnline worker, !->
+      setWorkerStatus worker, \online
       event \WorkerOnline
+      if workers.booting.count is 0
+        event \Ready
   worker
 
 !function event (name)
   process.send do
-    new_count: new_workers.count
-    old_count: workers.count
-    dying_count: dying_workers.count
+    count:
+      booting: workers.booting.count
+      online: workers.online.count
+      dying: workers.dying.count
+      new_booting: workers.new_booting.count
+      new_online: workers.new_online.count
     waiting_for: waiting_for
     event: name
 
 !function spawnNew (cb)
-  assert new_workers.count < worker_count
+  assert workers.new_booting.count < worker_count
+  addWorker \new_booting, new_worker = makeWorker()
   event \SpawnNew
-  addWorker new_workers, new_worker = makeWorker()
   onceOnline new_worker, !->
+    setWorkerStatus new_worker, \new_online
     event \NewOnline
     cb()
 
-!function shutdownOneWorker (collection, cb)
+function shutdownOneWorker (status) then !(cb) ->
+  collection = workers[status]
   assert collection.count > 0
+  addWorker \dying, dying_worker = shiftWorker(status)
   event \ShutdownOld
-  addWorker dying_workers, dying_worker = shiftWorker(collection)
   dying_worker.disconnect()
   dying_worker.send \shutdown
   dying_worker.once \exit, !->
+    removeWorker dying_worker.process.pid
     event \OldExit
-    removeWorker dying_workers, dying_worker.process.pid
     cb()
 
-!function shutdownOld (cb)
-  shutdownOneWorker(workers, cb)
-
-!function shutdownNew (cb)
-  shutdownOneWorker(new_workers, cb)
-
-!function deployStart
-  if waiting_for?
+!function deployStart (cb)
+  if waiting_for is \shutdown
+    event \ErrorShuttingDown
+    return cb()
+  else if waiting_for?
     event \ErrorDeployInProgress
-    return
+    return cb()
+  else if workers.booting.count > 0
+    event \ErrorStillBooting
+    return cb()
 
   waiting_for := \new
   async.parallel (spawnNew for i from 0 til worker_count), !->
-    assert new_workers.count is worker_count
+    assert workers.new_online.count is worker_count
     waiting_for := \old
-    async.parallel (shutdownOld for i from 0 til worker_count), !->
-      assert workers.count is 0
-      assert dying_workers.count is 0
-      event \Ready
+    async.parallel (shutdownOneWorker('online') for i from 0 til worker_count), !->
+      assert workers.online.count is 0
+      assert workers.dying.count is 0
       waiting_for := null
-      if abort_timeout?
-        clearTimeout(abort_timeout)
-        abort_timeout := null
-      [workers, new_workers] := [new_workers, workers]
+      forEachWorker \new_online, !(pid, worker) ->
+        setWorkerStatus worker, \online
+      event \Ready
+      cb()
 
-!function destroyNew (cb)
+function destroyWorkers (status) then !(cb) ->
+  new_worker = shiftWorker(status)
   event \DestroyNew
-  new_worker = shiftWorker(new_workers)
   new_worker.once \exit, cb
   new_worker.destroy()
 
 !function deployAbort
   switch waiting_for
     case \new
-      async.parallel (destroyNew for i from 0 til new_workers.count), !->
-        event \Ready
+      online = (destroyWorkers('new_online') for i from 0 til workers.new_online.count)
+      booting = (destroyWorkers('new_booting') for i from 0 til workers.new_booting.count)
+      async.parallel online.concat(booting), !->
         waiting_for := null
+        event \Ready
     case \old
       destroyDying()
     default
       event \ErrorNoDeployInProgress
 
-!function shutdownAll
+!function shutdownAll (cb)
   waiting_for := \shutdown
-  funcs_old = (shutdownOld for i from 0 til workers.count)
-  funcs_new = (shutdownNew for i from 0 til new_workers.count)
-  async.parallel funcs_old.concat(funcs_new), !-> process.exit(0)
+  fns = []
+  for status of <[booting online new_booting new_online]>
+    for i from 0 til workers[status].count
+      fns.push shutdownOneWorker(status)
+  async.parallel fns, cb
 
 !function destroyDying
-  forEachWorker dying_workers, !(pid, dying_worker) ->
+  forEachWorker \dying, !(pid, dying_worker) ->
     event \DestroyOld
     dying_worker.destroy()
 
 !function destroyAll
-  assert workers.count is 0
-  assert new_workers.count is 0
+  assert workers.online.count is 0
+  assert workers.new_booting.count is 0
+  assert workers.new_online.count is 0
+  assert workers.booting.count is 0
   destroyDying()

@@ -104,8 +104,10 @@ steps = [
         PORT: port,
         hi: "sup dawg",
       }, function(stdout, stderr, code) {
-        assertEqual(stderr, "event: Bootup, old: 0, new: 0, dying: 0\n")
-        assertEqual(stdout, "server is running\nworkers online: 1\n")
+        assertEqual(stderr,
+          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "workers online: 1\n")
         assertEqual(code, 0)
         cb();
       });
@@ -116,7 +118,7 @@ steps = [
     fn: function (cb) {
       naught_exec(["start", "server.js"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
-        assertEqual(stdout, "server is running\nworkers online: 1\n");
+        assertEqual(stdout, "workers online: 1\n");
         assertEqual(code, 1)
         cb();
       });
@@ -127,7 +129,7 @@ steps = [
     fn: function (cb) {
       naught_exec(["status"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
-        assertEqual(stdout, "server is running\nworkers online: 1\n");
+        assertEqual(stdout, "workers online: 1\n");
         assertEqual(code, 0)
         cb();
       });
@@ -159,10 +161,11 @@ steps = [
     info: "ability to deploy to a running server",
     fn: function (cb) {
       naught_exec(["deploy"], {hi: "hola"}, function(stdout, stderr, code) {
-        assertEqual(stderr, "event: SpawnNew, old: 1, new: 0, dying: 0\n" +
-          "event: NewOnline, old: 1, new: 1, dying: 0\n" +
-          "event: ShutdownOld, old: 1, new: 1, dying: 0\n" +
-          "event: OldExit, old: 0, new: 1, dying: 1\n" +
+        assertEqual(stderr,
+          "SpawnNew. booting: 0, online: 1, dying: 0, new_booting: 1, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 1\n" +
           "done\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
@@ -195,7 +198,9 @@ steps = [
     info: "ability to stop a running server",
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
-        assertEqual(stderr, "event: ShutdownOld, old: 1, new: 0, dying: 0\nevent: OldExit, old: 0, new: 0, dying: 1\n");
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
@@ -237,19 +242,20 @@ steps = [
     info: "naught log contains events",
     fn: function (cb) {
       fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
-        assertEqual(contents, "event: Bootup, old: 0, new: 0, dying: 0\n" +
-          "event: Status, old: 1, new: 0, dying: 0\n" +
-          "event: Status, old: 1, new: 0, dying: 0\n" +
-          "event: WorkerOnline, old: 1, new: 0, dying: 0\n" +
-          "event: Status, old: 1, new: 0, dying: 0\n" +
-          "event: SpawnNew, old: 1, new: 0, dying: 0\n" +
-          "event: NewOnline, old: 1, new: 1, dying: 0\n" +
-          "event: ShutdownOld, old: 1, new: 1, dying: 0\n" +
-          "event: OldExit, old: 0, new: 1, dying: 1\n" +
-          "event: Ready, old: 0, new: 1, dying: 0\n" +
-          "event: ShutdownOld, old: 1, new: 0, dying: 0\n" +
-          "event: OldExit, old: 0, new: 0, dying: 1\n" +
-          "event: Shutdown, old: 0, new: 0, dying: 0\n");
+        assertEqual(contents,
+          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Status. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Status. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "SpawnNew. booting: 0, online: 1, dying: 0, new_booting: 1, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 1\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Shutdown. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
         cb();
       });
     },
@@ -275,8 +281,14 @@ steps = [
       ], {
         PORT: port,
       }, function(stdout, stderr, code) {
-        assertEqual(stderr, "event: Bootup, old: 0, new: 0, dying: 0\n")
-        assertEqual(stdout, "server is running\nworkers online: 5\n")
+        assertEqual(stderr,
+          "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 3, online: 2, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 2, online: 3, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 1, online: 4, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 5, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "workers online: 5\n")
         assertEqual(code, 0)
         cb();
       });
@@ -286,17 +298,17 @@ steps = [
     info: "ability to stop a running server with multiple workers",
     fn: function (cb) {
       naught_exec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
-//        assertEqual(stderr,
-//          "event: ShutdownOld, old: 5, new: 0, dying: 0\n" +
-//          "event: ShutdownOld, old: 4, new: 0, dying: 1\n" +
-//          "event: ShutdownOld, old: 3, new: 0, dying: 2\n" +
-//          "event: ShutdownOld, old: 2, new: 0, dying: 3\n" +
-//          "event: ShutdownOld, old: 1, new: 0, dying: 4\n" +
-//          "event: OldExit, old: 0, new: 0, dying: 5\n" +
-//          "event: OldExit, old: 0, new: 0, dying: 4\n" +
-//          "event: OldExit, old: 0, new: 0, dying: 3\n" +
-//          "event: OldExit, old: 0, new: 0, dying: 2\n" +
-//          "event: OldExit, old: 0, new: 0, dying: 1\n");
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 4, dying: 1, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 3, dying: 2, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 2, dying: 3, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 1, dying: 4, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 5, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 4, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 3, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();

@@ -34,16 +34,19 @@ function connectToDaemon (socket_path, cbs)
   throw error unless error.code is \ENOENT
 
 !function exitWithConnRefusedMsg (socket_path)
-  console.error "unable to connect to ipc-file `#socket_path`"
-  console.error "\n1. the ipc file specified is invalid, or"
-  console.error "2. the daemon process died unexpectedly"
+  fs.writeSync(process.stderr.fd, """
+  unable to connect to ipc-file `#socket_path`
+
+  1. the ipc file specified is invalid, or
+  2. the daemon process died unexpectedly\n
+  """)
   process.exit(1)
 
 function getDaemonMessages (socket_path, cbs)
   socket = connectToDaemon(socket_path, cbs)
   socket.on \error, !(error) ->
     if error.code is \ENOENT
-      console.error "server not running"
+      fs.writeSync(process.stderr.fd, "server not running\n")
       process.exit(1)
     else if error.code is \ECONNREFUSED
       exitWithConnRefusedMsg(socket_path)
@@ -61,11 +64,12 @@ function getDaemonMessages (socket_path, cbs)
       json_socket.send socket, action: \NaughtStatus
     event: !(msg) ->
       if msg.event is \Status
-        printStatusMsg msg
+        fs.writeSync(process.stdout.fd, statusMsg(msg))
         process.exit(1)
       else
         printDaemonMsg msg
   socket.on \error, !(error) ->
+    socket.end()
     if error.code is \ECONNREFUSED
       exitWithConnRefusedMsg(options.'ipc-file')
     else if error.code is \ENOENT
@@ -88,7 +92,14 @@ function getDaemonMessages (socket_path, cbs)
       child.unref()
       child.on \message, !(msg) ->
         assert msg is \IpcListening
-        displayStatus(options.'ipc-file')
+        child.disconnect()
+        socket = connectToDaemon options.'ipc-file',
+          event: !(msg) ->
+            if msg.event is \Ready
+              process.stdout.write statusMsg(msg)
+              socket.end()
+            else
+              printDaemonMsg msg
     else
       throw error
 
@@ -100,20 +111,40 @@ function getDaemonMessages (socket_path, cbs)
         timeout: options.timeout
     event: !(msg) ->
       if msg.event is \Shutdown
-        process.exit(0)
+        socket.end()
       else
         printDaemonMsg msg
 
-!function printDaemonMsg (msg)
-  console.error "event: #{msg.event}, old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
+function workerCountsFromMsg (msg)
+  "booting: #{msg.count?booting}, \
+  online: #{msg.count?online}, \
+  dying: #{msg.count?dying}, \
+  new_booting: #{msg.count?new_booting}, \
+  new_online: #{msg.count?new_online}"
 
-!function printStatusMsg (msg)
-  if msg.waiting_for?
-    console.log "deploy in progress"
-    console.log "old: #{msg.old_count}, new: #{msg.new_count}, dying: #{msg.dying_count}"
+!function printDaemonMsg (msg)
+  console.error "#{msg.event}. #{workerCountsFromMsg(msg)}"
+
+function statusMsg (msg)
+  if msg.count.booting > 0
+    """
+    booting
+    #{workerCountsFromMsg(msg)}\n
+    """
+  else if msg.waiting_for is \shutdown
+    """
+    shutting down
+    #{workerCountsFromMsg(msg)}\n
+    """
+  else if msg.waiting_for?
+    """
+    deploy in progress
+    #{workerCountsFromMsg(msg)}\n
+    """
   else
-    console.log "server is running"
-    console.log "workers online: #{msg.old_count}"
+    """
+    workers online: #{msg.count.online}\n
+    """
 
 !function deploy (options, ipc_file)
   socket = getDaemonMessages ipc_file,
@@ -127,16 +158,21 @@ function getDaemonMessages (socket_path, cbs)
       switch msg.event
         case \ErrorDeployInProgress
           console.error "Deploy already in progress. Press Ctrl+C to abort."
-          setAbortKeyboardHook()
+        case \ErrorStillBooting
+          console.error "Still booting."
+          clearAbortKeyboardHook()
         case \Ready
           console.error "done"
           process.exit(0)
         default
           printDaemonMsg msg
   !function setAbortKeyboardHook
-    process.once \SIGINT, !->
-      console.error "aborting deploy"
-      json_socket.send socket, action: \NaughtDeployAbort
+    process.once \SIGINT, handleSigInt
+  !function clearAbortKeyboardHook
+    process.removeListener \SIGINT, handleSigInt
+  !function handleSigInt
+    console.error "aborting deploy"
+    json_socket.send socket, action: \NaughtDeployAbort
 
 !function deployAbort (ipc_file)
   socket = getDaemonMessages ipc_file,
@@ -159,8 +195,8 @@ function getDaemonMessages (socket_path, cbs)
       json_socket.send socket, action: \NaughtStatus
     event: !(msg) ->
       if msg.event is \Status
-        printStatusMsg msg
-        process.exit(0)
+        process.stdout.write(statusMsg(msg))
+        socket.end()
       else
         printDaemonMsg msg
 

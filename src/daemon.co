@@ -43,8 +43,15 @@ server = null
   logs.naught.write(str)
   process.stderr.write(str)
 
+function workerCountsFromMsg (msg)
+  "booting: #{msg.count?booting}, \
+  online: #{msg.count?online}, \
+  dying: #{msg.count?dying}, \
+  new_booting: #{msg.count?new_booting}, \
+  new_online: #{msg.count?new_online}"
+
 !function onMessage (message)
-  logs.naught.write("event: #{message.event}, old: #{message.old_count}, new: #{message.new_count}, dying: #{message.dying_count}\n")
+  logs.naught.write("#{message.event}. #{workerCountsFromMsg(message)}\n")
   if socket? then json_socket.send(socket, message)
 
 !function createLogsAndIpcServer(cb)
@@ -89,9 +96,12 @@ server = null
   master.on \exit, !->
     onMessage do
       event: \Shutdown
-      old_count: 0
-      new_count: 0
-      dying_count: 0
+      count:
+        booting: 0
+        online: 0
+        dying: 0
+        new_booting: 0
+        new_online: 0
     server.close()
 
 createLogsAndIpcServer !(err) ->
