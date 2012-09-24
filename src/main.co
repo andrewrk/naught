@@ -85,7 +85,7 @@ function getDaemonMessages (socket_path, cbs)
         path.resolve(CWD, script),
       ].concat(argv), {
         env: process.env
-        stdio: [process.stdin, process.stdout, process.stderr, \ipc]
+        stdio: [\ignore \ignore \ignore \ipc]
         detached: true
         cwd: options.cwd
       })
