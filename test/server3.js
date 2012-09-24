@@ -35,6 +35,8 @@ http.createServer(function(req, resp) {
         resp.end("stderr3")
       })
     })
+  } else if (req.url === "/argv") {
+    resp.end(process.argv.slice(2).join(','))
   }
 }).listen(process.env.PORT, function() {
   console.error("server3 listening");

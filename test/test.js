@@ -309,6 +309,7 @@ steps = [
       });
     },
   },
+  get("command line arguments passed to server correctly", "/argv", "--custom1,aoeu,herp derp"),
   get("multi-worker server responding to get requests", "/stdout", "stdout3"),
   get("(test setup) generate log output", "/stderr", "stderr3"),
   get("(test setup) generate log output", "/stdout", "stdout3"),
