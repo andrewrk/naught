@@ -409,6 +409,41 @@ steps = [
     },
   },
   remove(["foo", "log", "some", "server.js"]),
+  use("server4.js"),
+  {
+    info: "(test setup) starting a server that won't shut down",
+    fn: function (cb) {
+      naught_exec(["start", "--worker-count", "2", "server.js"], {
+        PORT: port,
+      }, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "Bootup. booting: 2, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 1, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 2, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "workers online: 2\n")
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  {
+    info: "ability to stop a hanging server with a timeout",
+    fn: function (cb) {
+      naught_exec(["stop", "--timeout", "0.3"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 function doStep() {
