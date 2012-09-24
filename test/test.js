@@ -1,4 +1,4 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse;
+var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, zlib;
 
 fs = require('fs');
 fse = require('fs-extra');
@@ -7,6 +7,7 @@ spawn = require('child_process').spawn;
 path = require("path");
 assert = require("assert");
 async = require("async");
+zlib = require('zlib');
 
 root = path.join(__dirname, "..");
 test_root = path.join(root, "test");
@@ -55,6 +56,36 @@ function naught_exec(args, env, cb) {
   });
 }
 
+function collectLogFiles(test_path, cb) {
+  fs.readdir(path.join(test_root, test_path), function (err, files) {
+    if (err) return cb(err);
+    files.sort()
+    if (! /\.gz$/.test(files[0])) {
+      files.push(files.shift());
+    }
+    async.map(files, function (file, cb) {
+      fs.readFile(path.join(test_root, test_path, file), function (err, data) {
+        if (err) return cb(err);
+        if (/\.gz$/.test(file)) {
+          zlib.gunzip(data, function (err, data) {
+            if (err) return cb(err);
+            cb(null, {file: file, data: data});
+          });
+        } else {
+          cb(null, {file: file, data: data});
+        }
+      });
+    }, function (err, results) {
+      var full_data;
+      full_data = "";
+      results.forEach(function(item) {
+        full_data += item.data.toString();
+      });
+      cb(null, results, full_data);
+    });
+  });
+}
+
 function use(script) {
   return {
     info: "(test setup) use " + script,
@@ -93,6 +124,30 @@ function remove(files) {
       }, cb);
     },
   }
+}
+
+function get(info, url, expected_resp) {
+  return {
+    info: info,
+    fn: function (cb) {
+      http.request({
+        hostname: hostname,
+        port: port,
+        path: url,
+      }, function (res) {
+        var body;
+        assertEqual(res.statusCode, 200);
+        body = ""
+        res.on('data', function(data) {
+          body += data;
+        });
+        res.on('end', function() {
+          assertEqual(body, expected_resp);
+          cb();
+        });
+      }).end();
+    },
+  };
 }
 
 steps = [
@@ -135,27 +190,7 @@ steps = [
       });
     },
   },
-  {
-    info: "make sure the server is up",
-    fn: function (cb) {
-      http.request({
-        hostname: hostname,
-        port: port,
-        path: "/hi",
-      }, function (res) {
-        var body;
-        assertEqual(res.statusCode, 200);
-        body = ""
-        res.on('data', function(data) {
-          body += data;
-        });
-        res.on('end', function() {
-          assertEqual(body, "server1 sup dawg");
-          cb();
-        });
-      }).end();
-    },
-  },
+  get("make sure the server is up", "/hi", "server1 sup dawg"),
   use("server2.js"),
   {
     info: "ability to deploy to a running server",
@@ -173,27 +208,7 @@ steps = [
       });
     },
   },
-  {
-    info: "ability to change environment variables of workers",
-    fn: function (cb) {
-      http.request({
-        hostname: hostname,
-        port: port,
-        path: "/hi",
-      }, function (res) {
-        var body;
-        assertEqual(res.statusCode, 200);
-        body = ""
-        res.on('data', function(data) {
-          body += data;
-        });
-        res.on('end', function() {
-          assertEqual(body, "server2 hola");
-          cb();
-        });
-      }).end();
-    },
-  },
+  get("ability to change environment variables of workers", "/hi", "server2 hola"),
   {
     info: "ability to stop a running server",
     fn: function (cb) {
@@ -273,7 +288,7 @@ steps = [
           "--log", "log/naught/a.log",
           "--stderr", "log/stderr/b",
           "--stdout", "log/stdout/c.",
-          "--max-log-size", "100",
+          "--max-log-size", "300",
           "--cwd", "foo",
           "server.js",
           "--custom1", "aoeu",
@@ -294,6 +309,10 @@ steps = [
       });
     },
   },
+  get("multi-worker server responding to get requests", "/stdout", "stdout3"),
+  get("(test setup) generate log output", "/stderr", "stderr3"),
+  get("(test setup) generate log output", "/stdout", "stdout3"),
+  get("(test setup) generate log output", "/stderr", "stderr3"),
   {
     info: "ability to stop a running server with multiple workers",
     fn: function (cb) {
@@ -311,6 +330,79 @@ steps = [
           "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  {
+    info: "log rotation and gzipping: naught log",
+    fn: function (cb) {
+      collectLogFiles("log/naught", function (err, files, data) {
+        if (err) return cb(err)
+        assertEqual(files.length, 4);
+        assertEqual(data,
+          "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 3, online: 2, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 2, online: 3, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 1, online: 4, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 5, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Ready. booting: 0, online: 5, dying: 0, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 4, dying: 1, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 3, dying: 2, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 2, dying: 3, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 1, dying: 4, new_booting: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 5, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 4, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 3, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "Shutdown. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+        cb();
+      });
+    },
+  },
+  {
+    info: "log rotation and gzipping: stderr log",
+    fn: function (cb) {
+      collectLogFiles("log/stderr", function (err, files, data) {
+        if (err) return cb(err)
+        assertEqual(files.length, 2);
+        assertEqual(data,
+          "server3 listening\n" +
+          "server3 listening\n" +
+          "server3 listening\n" +
+          "server3 listening\n" +
+          "server3 listening\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stderr abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n");
+        cb();
+      });
+    },
+  },
+  {
+    info: "log rotation and gzipping: stdout log",
+    fn: function (cb) {
+      collectLogFiles("log/stdout", function (err, files, data) {
+        if (err) return cb(err)
+        assertEqual(files.length, 2);
+        assertEqual(data,
+          "server3 attempting to listen\n" +
+          "server3 attempting to listen\n" +
+          "server3 attempting to listen\n" +
+          "server3 attempting to listen\n" +
+          "server3 attempting to listen\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n" +
+          "3 stdout abcdefghijklmnopqrstuvwxyz123456789101121314151617181920\n");
         cb();
       });
     },
