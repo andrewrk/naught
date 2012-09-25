@@ -2,6 +2,7 @@
   "name": "naught",
   "version": "0.2.1",
   "description": "zero downtime deployment for your node.js server",
+  "keywords": ["zero", "downtime", "uptime", "deploy", "deployment", "unicorn", "forever", "cluster", "daemon", "daemonize"],
   "scripts": {
     "dev": "npm install && coke watch",
     "test": "node test/test.js"
