@@ -6,6 +6,9 @@ features:
  * redirect worker stdout and stderr to rotating gzipped log files
  * runs as daemon, providing ability to start and stop
 
+    Side by side comparison with nodejitsu/forever:
+    http://www.superjoesoftware.com/temp/naught
+
 usage:
 
     To use naught, your node.js server has 2 requirements.
