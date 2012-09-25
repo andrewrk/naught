@@ -1,6 +1,6 @@
 features:
 
- * zero downtime code hot-swapping
+ * zero downtime code deployment
  * ability to change environment variables of workers with zero downtime
  * resuscitation - when a worker dies it is restarted
  * redirect worker stdout and stderr to rotating gzipped log files
