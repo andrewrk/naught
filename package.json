@@ -1,6 +1,6 @@
 {
   "name": "naught",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "zero downtime deployment for your node.js server",
   "keywords": ["zero", "downtime", "uptime", "deploy", "deployment", "unicorn", "forever", "cluster", "daemon", "daemonize"],
   "scripts": {
