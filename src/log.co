@@ -34,6 +34,8 @@ export !function create (file_path, max_size, cb)
               gzip = zlib.createGzip()
               inp = fs.createReadStream(archive_name)
               out = fs.createWriteStream(archive_name + ".gz")
+              inp.on \error, (error) -> log.emit \error, error
+              out.on \error, (error) -> log.emit \error, error
               inp.pipe(gzip).pipe(out)
               out.once \close, !->
                 fs.unlink archive_name, !(err) ->
