@@ -153,3 +153,7 @@ installation:
 developing:
 
     $ npm run dev
+
+license:
+
+    MIT (see LICENSE)

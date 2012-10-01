@@ -15,7 +15,7 @@
     "url": "git://github.com/superjoe30/naught.git"
   },
   "author": "Andrew Kelley",
-  "license": "BSD",
+  "license": "MIT",
   "engines": {
     "node": "~0.8.2"
   },
