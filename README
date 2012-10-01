@@ -34,7 +34,7 @@ usage:
                    performCleanup();
                    process.exit(0);
                }
-           }
+           });
 
        If your server has no long-lived connections, you may skip this step.
        However, note that most node.js apps do have long lived connections.
