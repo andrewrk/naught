@@ -336,7 +336,7 @@ cmds =
         false
   'deploy-abort':
     help: """
-    naught deploy-abort [icp-file]
+    naught deploy-abort [ipc-file]
 
         Aborts a hanging deploy. A hanging deploy happens when a new worker
         fails to emit the 'online' message, or when an old worker fails
