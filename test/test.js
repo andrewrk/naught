@@ -1,4 +1,4 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, zlib;
+var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, zlib, node_binary;
 
 fs = require('fs');
 fse = require('fs-extra');
@@ -15,6 +15,7 @@ naught_main = path.join(root, "lib", "main.js");
 port = 11904;
 hostname = 'localhost';
 timeout = 5;
+node_binary = process.argv[0];
 
 function exec(cmd, args, opts, cb){
   var bin, stdout, stderr;
@@ -44,7 +45,7 @@ function import$(obj, src){
 function naught_exec(args, env, cb) {
   if (env == null) env = {}
   import$(import$({}, process.env), env)
-  exec("node", [naught_main].concat(args), {
+  exec(node_binary, [naught_main].concat(args), {
     cwd: __dirname,
     env: env
   }, function(stdout, stderr, code, signal) {
