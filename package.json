@@ -5,6 +5,7 @@
   "keywords": ["zero", "downtime", "uptime", "deploy", "deployment", "unicorn", "forever", "cluster", "daemon", "daemonize"],
   "scripts": {
     "dev": "npm install && coke watch",
+    "build": "coke build",
     "test": "node test/test.js"
   },
   "bin": {
