@@ -1,4 +1,7 @@
+[![Build Status](https://secure.travis-ci.org/indabamusic/naught.png)](http://travis-ci.org/indabamusic/naught)
+
 features:
+---------
 
  * zero downtime code deployment
  * ability to change environment variables of workers with zero downtime
@@ -6,10 +9,8 @@ features:
  * redirect worker stdout and stderr to rotating gzipped log files
  * runs as daemon, providing ability to start and stop
 
-    Side by side comparison with nodejitsu/forever:
-    http://www.superjoesoftware.com/temp/naught
-
 usage:
+------
 
     To use naught, your node.js server has 2 requirements.
     
@@ -145,15 +146,17 @@ CLI:
 
         Displays help for cmd.
 
-
-installation:
+Installation:
+-------------
 
     $ sudo npm install -g naught
 
-developing:
+Developing:
+-----------
 
     $ npm run dev
 
-license:
+License:
+--------
 
     MIT (see LICENSE)

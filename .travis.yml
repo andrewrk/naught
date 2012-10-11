@@ -1,5 +1,5 @@
 language: node_js
 node_js:
   - 0.8
-  - 0.6
-script: npm run build
+  - 0.9
+script: npm run build && npm test
