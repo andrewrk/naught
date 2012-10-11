@@ -1,6 +1,6 @@
 [![Build Status](https://secure.travis-ci.org/indabamusic/naught.png)](http://travis-ci.org/indabamusic/naught)
 
-features:
+Features:
 ---------
 
  * zero downtime code deployment
@@ -9,7 +9,7 @@ features:
  * redirect worker stdout and stderr to rotating gzipped log files
  * runs as daemon, providing ability to start and stop
 
-usage:
+Usage:
 ------
 
     To use naught, your node.js server has 2 requirements.
@@ -47,6 +47,7 @@ usage:
 
 
 CLI:
+----
 
     naught start [options] server.js [script-options]
 

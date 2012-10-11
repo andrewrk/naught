@@ -15,7 +15,7 @@ naught_main = path.join(root, "lib", "main.js");
 port = 11904;
 hostname = 'localhost';
 timeout = 5;
-node_binary = process.argv[0];
+node_binary = process.env.NODE_BINARY || process.argv[0];
 
 function exec(cmd, args, opts, cb){
   var bin, stdout, stderr;
