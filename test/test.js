@@ -24,14 +24,16 @@ function exec(cmd, args, opts, cb){
   if (cb == null) cb = function(){};
   bin = spawn(cmd, args, opts);
   stdout = ""
+  bin.stdout.setEncoding('utf8')
   bin.stdout.on('data', function(data) {
     stdout += data;
   });
   stderr = ""
+  bin.stderr.setEncoding('utf8')
   bin.stderr.on('data', function(data) {
     stderr += data;
   });
-  bin.on('exit', function(code, signal) {
+  bin.on('close', function(code, signal) {
     cb(stdout, stderr, code, signal);
   });
 }
