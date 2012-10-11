@@ -1,5 +1,3 @@
-[![Build Status](https://secure.travis-ci.org/indabamusic/naught.png)](http://travis-ci.org/indabamusic/naught)
-
 Features:
 ---------
 
