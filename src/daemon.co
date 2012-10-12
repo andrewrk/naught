@@ -1,6 +1,6 @@
 const
   fs = require('fs')
-  fse = require('fs-extra')
+  mkdirp = require('mkdirp')
   path = require('path')
   {spawn} = require('child_process')
   net = require('net')
@@ -57,7 +57,7 @@ function workerCountsFromMsg (msg)
 !function createLogsAndIpcServer(cb)
   async.parallel [
     createLogs,
-    !(cb) -> fse.mkdir(path.dirname(socket_path), cb)
+    !(cb) -> mkdirp(path.dirname(socket_path), cb)
   ], !(err) ->
     return cb(err) if err
     server := net.createServer !(new_socket) ->

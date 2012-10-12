@@ -2,7 +2,18 @@
   "name": "naught",
   "version": "0.2.2",
   "description": "zero downtime deployment for your node.js server",
-  "keywords": ["zero", "downtime", "uptime", "deploy", "deployment", "unicorn", "forever", "cluster", "daemon", "daemonize"],
+  "keywords": [
+    "zero",
+    "downtime",
+    "uptime",
+    "deploy",
+    "deployment",
+    "unicorn",
+    "forever",
+    "cluster",
+    "daemon",
+    "daemonize"
+  ],
   "scripts": {
     "dev": "npm install && coke watch",
     "build": "coke build",
@@ -21,10 +32,12 @@
     "node": ">=0.8.2 <0.10.0"
   },
   "devDependencies": {
-    "coco": "~0.8.1"
+    "coco": "~0.8.1",
+    "ncp": "~0.2.6",
+    "rimraf": "~2.0.2"
   },
   "dependencies": {
     "async": "~0.1.22",
-    "fs-extra": "~0.2.1"
+    "mkdirp": "~0.3.4"
   }
 }

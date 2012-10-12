@@ -1,7 +1,9 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, fse, zlib, node_binary;
+var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, mkdirp, zlib, node_binary;
 
 fs = require('fs');
-fse = require('fs-extra');
+mkdirp = require('mkdirp');
+ncp = require('ncp').ncp;
+rimraf = require('rimraf');
 http = require('http');
 spawn = require('child_process').spawn;
 path = require("path");
@@ -89,7 +91,7 @@ function use(script) {
   return {
     info: "(test setup) use " + script,
     fn: function (cb) {
-      fse.copy(path.join(test_root, script), path.join(test_root, "server.js"), cb);
+      ncp(path.join(test_root, script), path.join(test_root, "server.js"), cb);
     },
   };
 }
@@ -98,7 +100,7 @@ function mkdir(dir) {
   return {
     info: "(test setup) mkdir " + dir,
     fn: function (cb) {
-      fse.mkdir(path.join(test_root, dir), cb);
+      mkdirp(path.join(test_root, dir), cb);
     },
   };
 }
@@ -119,7 +121,7 @@ function remove(files) {
     info: "(test setup) rm -rf " + files.join(" "),
     fn: function (cb) {
       async.forEach(files, function (item, cb) {
-        fse.remove(path.join(test_root, item), cb);
+        rimraf(path.join(test_root, item), cb);
       }, cb);
     },
   }
