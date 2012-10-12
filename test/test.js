@@ -341,7 +341,7 @@ steps = [
     fn: function (cb) {
       collectLogFiles("log/naught", function (err, files, data) {
         if (err) return cb(err)
-        assert.strictEqual(files.length, 4);
+        assert.ok(files.length > 1);
         assert.strictEqual(data,
           "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
@@ -370,7 +370,7 @@ steps = [
     fn: function (cb) {
       collectLogFiles("log/stderr", function (err, files, data) {
         if (err) return cb(err)
-        assert.strictEqual(files.length, 2);
+        assert.ok(files.length > 1);
         assert.strictEqual(data,
           "server3 listening\n" +
           "server3 listening\n" +
@@ -392,7 +392,7 @@ steps = [
     fn: function (cb) {
       collectLogFiles("log/stdout", function (err, files, data) {
         if (err) return cb(err)
-        assert.strictEqual(files.length, 2);
+        assert.ok(files.length > 1);
         assert.strictEqual(data,
           "server3 attempting to listen\n" +
           "server3 attempting to listen\n" +
