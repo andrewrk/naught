@@ -77,6 +77,7 @@ function collectLogFiles(test_path, cb) {
         }
       });
     }, function (err, results) {
+      if (err) return cb(err);
       var full_data;
       full_data = "";
       results.forEach(function(item) {
