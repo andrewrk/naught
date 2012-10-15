@@ -3,11 +3,11 @@
 Features:
 ---------
 
- * zero downtime code deployment
- * ability to change environment variables of workers with zero downtime
- * resuscitation - when a worker dies it is restarted
- * redirect worker stdout and stderr to rotating gzipped log files
- * runs as daemon, providing ability to start and stop
+ * Zero downtime code deployment
+ * Ability to change environment variables of workers with zero downtime
+ * Resuscitation - when a worker dies it is restarted
+ * Redirect worker stdout and stderr to rotating gzipped log files
+ * Runs as daemon, providing ability to start and stop
 
 Usage:
 ------
@@ -45,6 +45,14 @@ To use naught, your node.js server has 2 requirements.
    When you receive the `shutdown` message, either close all open
    connections or call `process.exit()`.
 
+Tip:
+----
+
+If you want to deploy on a restricted port such as 80 or 443 without sudo, try
+[authbind](http://www.debian-administration.org/articles/386).
+
+Note that there are 3 layers of process spawning between the naught CLI
+and your server. So you'll want to use the `--deep` option with authbind.
 
 CLI:
 ----
