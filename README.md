@@ -71,6 +71,9 @@ CLI:
         pipes the output into a log file, node.js treats stdout and stderr
         as asynchronous streams.
 
+        If you don't want a particular log, use `/dev/null` for the path. Naught
+        special cases this filename and disables that log altogether.
+
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 

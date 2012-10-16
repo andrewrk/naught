@@ -24,24 +24,31 @@ socket = null
 master = null
 server = null
 
+!function maybeCreateLog(log_path, cb)
+  # special case /dev/null - disable logging altogether
+  if log_path is '/dev/null'
+    cb(null, null)
+  else
+    createLog(log_path, max_log_size, cb)
+
 !function createLogs(cb)
   async.parallel {
-    naught: !(cb) -> createLog(log_naught_path, max_log_size, cb)
-    stderr: !(cb) -> createLog(log_stderr_path, max_log_size, cb)
-    stdout: !(cb) -> createLog(log_stdout_path, max_log_size, cb)
+    naught: !(cb) -> maybeCreateLog(log_naught_path, cb)
+    stderr: !(cb) -> maybeCreateLog(log_stderr_path, cb)
+    stdout: !(cb) -> maybeCreateLog(log_stdout_path, cb)
   }, !(err, results) ->
     return cb(err) if err
     logs := results
-    logs.stderr.on \error, !(err) ->
+    logs.stderr?on \error, !(err) ->
       log "Error writing to #{log_stderr_path}: #{err.stack}\n"
-    logs.stdout.on \error, !(err) ->
+    logs.stdout?on \error, !(err) ->
       log "Error writing to #{log_stdout_path}: #{err.stack}\n"
-    logs.naught.on \error, !(err) ->
+    logs.naught?on \error, !(err) ->
       process.stderr.write("Error writing to #{log_naught_path}: #{err.stack}\n")
     cb()
 
 !function log (str)
-  logs.naught.write(str)
+  logs.naught?write(str)
   process.stderr.write(str)
 
 function workerCountsFromMsg (msg)
@@ -52,7 +59,7 @@ function workerCountsFromMsg (msg)
   new_online: #{msg.count?new_online}"
 
 !function onMessage (message)
-  logs.naught.write("#{message.event}. #{workerCountsFromMsg(message)}\n")
+  logs.naught?write("#{message.event}. #{workerCountsFromMsg(message)}\n")
   if socket? then json_socket.send(socket, message)
 
 !function createLogsAndIpcServer(cb)
@@ -84,19 +91,24 @@ function workerCountsFromMsg (msg)
 !function spawnMaster
   node_args = splitCmdLine(node_args_str)
   console.error "node_args", node_args
+  stdout_behavior = if logs.stdout? then 'pipe' else 'ignore'
+  stderr_behavior = if logs.stderr? then 'pipe' else 'ignore'
+  console.log "stdout beh", stdout_behavior
   master := spawn(process.execPath, node_args.concat([
     path.join(__dirname, "master.js"),
     worker_count,
     script,
   ]).concat(argv), {
     env: process.env
-    stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
+    stdio: [process.stdin, stdout_behavior, stderr_behavior, 'ipc']
     cwd: process.cwd()
   })
   master.on \message, onMessage
-  master.stdout.on \data, logs.stdout.write
-  master.stderr.on \data, logs.stderr.write
-  master.on \exit, !->
+  if logs.stdout?
+    master.stdout.on \data, logs.stdout.write
+  if logs.stderr?
+    master.stderr.on \data, logs.stderr.write
+  master.on \close, !->
     onMessage do
       event: \Shutdown
       count:

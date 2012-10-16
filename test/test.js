@@ -451,14 +451,16 @@ steps = [
     },
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
-  use("server5.js"),
   {
     info: "ability to pass command line arguments to node",
     fn: function (cb) {
       naught_exec([
           "start",
           "--node-args", "--harmony --use-strict",
-          "server.js",
+          "--log", "/dev/null",
+          "--stderr", "/dev/null",
+          "--stdout", "/dev/null",
+          "server5.js",
       ], {
         PORT: port,
       }, function(stdout, stderr, code) {
@@ -485,7 +487,6 @@ steps = [
       });
     },
   },
-  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 function doStep() {
