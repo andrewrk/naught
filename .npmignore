@@ -2,3 +2,5 @@
 /node_modules
 # different from .gitignore
 /src
+/test
+Cokefile
