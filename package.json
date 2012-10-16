@@ -37,7 +37,7 @@
     "rimraf": "~2.0.2"
   },
   "dependencies": {
-    "async": "~0.1.22",
-    "mkdirp": "~0.3.4"
+    "mkdirp": "~0.3.4",
+    "async": "git://github.com/superjoe30/async.git#515c7dfe26135a1961ae9d71c5c"
   }
 }

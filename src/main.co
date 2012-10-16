@@ -83,6 +83,7 @@ function getDaemonMessages (socket_path, cbs)
         path.resolve(CWD, options.stdout),
         options.'max-log-size',
         path.resolve(CWD, script),
+        options.'node-args',
       ].concat(argv), {
         env: process.env
         stdio: [\ignore \ignore \ignore \ipc]
@@ -229,6 +230,7 @@ cmds =
         --stderr stderr.log
         --max-log-size 10485760
         --cwd #CWD
+        --node-args ''
       """
     fn: (argv) ->
       options =
@@ -239,6 +241,7 @@ cmds =
         'stderr': 'stderr.log'
         'max-log-size': '10485760'
         'cwd': CWD
+        'node-args': ''
       [err, script] = chompArgv(options, argv)
       if not err and script?
         options.'worker-count' = parseInt(options.'worker-count')

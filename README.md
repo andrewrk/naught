@@ -83,6 +83,7 @@ CLI:
         --stderr stderr.log
         --max-log-size 10485760
         --cwd .
+        --node-args ''
 
 
     naught stop [options] [ipc-file]

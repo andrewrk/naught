@@ -138,18 +138,23 @@ function get(info, url, expected_resp) {
         path: url,
       }, function (res) {
         var body;
-        assert.strictEqual(res.statusCode, 200);
+        assertEqual(res.statusCode, 200);
         body = ""
         res.on('data', function(data) {
           body += data;
         });
         res.on('end', function() {
-          assert.strictEqual(body, expected_resp);
+          assertEqual(body, expected_resp);
           cb();
         });
       }).end();
     },
   };
+}
+
+function assertEqual(actual, expected, msg) {
+  msg = msg || "";
+  assert(actual === expected, "actual:\n" + actual + "\nexpected:\n" + expected + "\n" + msg);
 }
 
 steps = [
@@ -161,11 +166,11 @@ steps = [
         PORT: port,
         hi: "sup dawg",
       }, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "workers online: 1\n")
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "workers online: 1\n")
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -174,9 +179,9 @@ steps = [
     info: "starting a server twice prints the status of the running server",
     fn: function (cb) {
       naught_exec(["start", "server.js"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr, "");
-        assert.strictEqual(stdout, "workers online: 1\n");
-        assert.strictEqual(code, 1)
+        assertEqual(stderr, "");
+        assertEqual(stdout, "workers online: 1\n");
+        assertEqual(code, 1)
         cb();
       });
     },
@@ -185,9 +190,9 @@ steps = [
     info: "ability to query status of a running server",
     fn: function (cb) {
       naught_exec(["status"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr, "");
-        assert.strictEqual(stdout, "workers online: 1\n");
-        assert.strictEqual(code, 0)
+        assertEqual(stderr, "");
+        assertEqual(stdout, "workers online: 1\n");
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -198,14 +203,14 @@ steps = [
     info: "ability to deploy to a running server",
     fn: function (cb) {
       naught_exec(["deploy"], {hi: "hola"}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "SpawnNew. booting: 0, online: 1, dying: 0, new_booting: 1, new_online: 0\n" +
           "NewOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 1\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 1\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 1\n" +
           "done\n");
-        assert.strictEqual(stdout, "");
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -215,11 +220,11 @@ steps = [
     info: "ability to stop a running server",
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "");
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -228,9 +233,9 @@ steps = [
     info: "stopping a server twice prints helpful output",
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stdout, "");
-        assert.strictEqual(stderr, "server not running\n");
-        assert.strictEqual(code, 1)
+        assertEqual(stdout, "");
+        assertEqual(stderr, "server not running\n");
+        assertEqual(code, 1)
         cb();
       });
     },
@@ -239,7 +244,7 @@ steps = [
     info: "redirect stdout to log file",
     fn: function (cb) {
       fs.readFile(path.join(test_root, "stdout.log"), "utf8", function (err, contents) {
-        assert.strictEqual(contents, "server1 attempting to listen\n" +
+        assertEqual(contents, "server1 attempting to listen\n" +
           "server2 attempting to listen\n");
         cb();
       });
@@ -249,7 +254,7 @@ steps = [
     info: "redirect stderr to log file",
     fn: function (cb) {
       fs.readFile(path.join(test_root, "stderr.log"), "utf8", function (err, contents) {
-        assert.strictEqual(contents, "server1 listening\n" +
+        assertEqual(contents, "server1 listening\n" +
           "server2 listening\n");
         cb();
       });
@@ -259,7 +264,7 @@ steps = [
     info: "naught log contains events",
     fn: function (cb) {
       fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
-        assert.strictEqual(contents,
+        assertEqual(contents,
           "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
           "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
@@ -298,15 +303,15 @@ steps = [
       ], {
         PORT: port,
       }, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 3, online: 2, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 2, online: 3, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 1, online: 4, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 0, online: 5, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "workers online: 5\n")
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "workers online: 5\n")
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -320,7 +325,7 @@ steps = [
     info: "ability to stop a running server with multiple workers",
     fn: function (cb) {
       naught_exec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 4, dying: 1, new_booting: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 3, dying: 2, new_booting: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 2, dying: 3, new_booting: 0, new_online: 0\n" +
@@ -331,8 +336,8 @@ steps = [
           "OldExit. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "");
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -343,7 +348,7 @@ steps = [
       collectLogFiles("log/naught", function (err, files, data) {
         if (err) return cb(err)
         assert.ok(files.length > 1);
-        assert.strictEqual(data,
+        assertEqual(data,
           "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 3, online: 2, dying: 0, new_booting: 0, new_online: 0\n" +
@@ -372,7 +377,7 @@ steps = [
       collectLogFiles("log/stderr", function (err, files, data) {
         if (err) return cb(err)
         assert.ok(files.length > 1);
-        assert.strictEqual(data,
+        assertEqual(data,
           "server3 listening\n" +
           "server3 listening\n" +
           "server3 listening\n" +
@@ -394,7 +399,7 @@ steps = [
       collectLogFiles("log/stdout", function (err, files, data) {
         if (err) return cb(err)
         assert.ok(files.length > 1);
-        assert.strictEqual(data,
+        assertEqual(data,
           "server3 attempting to listen\n" +
           "server3 attempting to listen\n" +
           "server3 attempting to listen\n" +
@@ -418,12 +423,12 @@ steps = [
       naught_exec(["start", "--worker-count", "2", "server.js"], {
         PORT: port,
       }, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "Bootup. booting: 2, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 1, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
           "WorkerOnline. booting: 0, online: 2, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "workers online: 2\n")
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "workers online: 2\n")
+        assertEqual(code, 0)
         cb();
       });
     },
@@ -432,15 +437,50 @@ steps = [
     info: "ability to stop a hanging server with a timeout",
     fn: function (cb) {
       naught_exec(["stop", "--timeout", "0.3"], {}, function(stdout, stderr, code) {
-        assert.strictEqual(stderr,
+        assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
-        assert.strictEqual(stdout, "");
-        assert.strictEqual(code, 0)
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
+  use("server5.js"),
+  {
+    info: "ability to pass command line arguments to node",
+    fn: function (cb) {
+      naught_exec([
+          "start",
+          "--node-args", "--harmony --use-strict",
+          "server.js",
+      ], {
+        PORT: port,
+      }, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "workers online: 1\n")
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  get("make sure --harmony --use-strict worked", "/hi", "0\n1\n2\nserver5 says hi\n"),
+  {
+    info: "(test setup) stopping server",
+    fn: function (cb) {
+      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
         cb();
       });
     },

@@ -17,6 +17,7 @@ const
   log_stdout_path = argv.shift()
   max_log_size = parseInt(argv.shift())
   script = argv.shift()
+  node_args_str = argv.shift()
 
 logs = null
 socket = null
@@ -81,11 +82,13 @@ function workerCountsFromMsg (msg)
       cb()
 
 !function spawnMaster
-  master := spawn(process.execPath, [
+  node_args = splitCmdLine(node_args_str)
+  console.error "node_args", node_args
+  master := spawn(process.execPath, node_args.concat([
     path.join(__dirname, "master.js"),
     worker_count,
     script,
-  ].concat(argv), {
+  ]).concat(argv), {
     env: process.env
     stdio: [process.stdin, 'pipe', 'pipe', 'ipc']
     cwd: process.cwd()
@@ -103,6 +106,12 @@ function workerCountsFromMsg (msg)
         new_booting: 0
         new_online: 0
     server.close()
+
+function splitCmdLine (str)
+  if str.length is 0
+    []
+  else
+    str.split(/\s+/)
 
 createLogsAndIpcServer !(err) ->
   assert.ifError(err)
