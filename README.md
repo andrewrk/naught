@@ -16,26 +16,32 @@ To use naught, your node.js server has 2 requirements.
 
 1. Once the server is fully booted and is readily accepting connections,
 
-        process.send('online');
+   ```js
+   process.send('online');
+   ```
 
    Usually this is done in the `listening` event for a node server, for
    example:
 
-       server = http.createServer(...);
-       server.listen(80, function () {
-           process.send('online');
-       });
+   ```js
+   server = http.createServer(...);
+   server.listen(80, function () {
+     process.send('online');
+   });
+   ```
 
 2. Listen to the `shutdown` message and shutdown gracefully. This message
    is emitted after there is already a newer instance of your server
    online and taking care of business:
 
-       process.on('message', function(message) {
-           if (message === 'shutdown') {
-               performCleanup();
-               process.exit(0);
-           }
-       });
+   ```js
+   process.on('message', function(message) {
+     if (message === 'shutdown') {
+       performCleanup();
+       process.exit(0);
+     }
+   );
+   ```
 
    If your server has no long-lived connections, you may skip this step.
    However, note that most node.js apps do have long lived connections.
