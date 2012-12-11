@@ -1,6 +1,6 @@
 {
   "name": "naught",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "description": "zero downtime deployment for your node.js server",
   "keywords": [
     "zero",
