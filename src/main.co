@@ -378,3 +378,4 @@ if (cmd = cmds[process.argv[2]])?
     console.error(cmd.help)
 else
   printUsage()
+  process.exit(1)
