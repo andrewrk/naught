@@ -40,7 +40,7 @@ To use naught, your node.js server has 2 requirements.
        performCleanup();
        process.exit(0);
      }
-   );
+   });
    ```
 
    If your server has no long-lived connections, you may skip this step.
