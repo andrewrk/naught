@@ -26,7 +26,7 @@ To use naught, your node.js server has 2 requirements.
    ```js
    server = http.createServer(...);
    server.listen(80, function () {
-     process.send('online');
+     if (process.send) process.send('online');
    });
    ```
 
