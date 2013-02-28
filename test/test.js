@@ -1,162 +1,23 @@
-var fs, naught_bin, path, naught_main, assert, async, exec, spawn, steps, root, test_root, http, port, hostname, timeout, step_count, mkdirp, zlib;
+var fs = require('fs')
+  , mkdirp = require('mkdirp')
+  , ncp = require('ncp').ncp
+  , rimraf = require('rimraf')
+  , http = require('http')
+  , spawn = require('child_process').spawn
+  , path = require("path")
+  , assert = require("assert")
+  , async = require("async")
+  , zlib = require('zlib')
 
-fs = require('fs');
-mkdirp = require('mkdirp');
-ncp = require('ncp').ncp;
-rimraf = require('rimraf');
-http = require('http');
-spawn = require('child_process').spawn;
-path = require("path");
-assert = require("assert");
-async = require("async");
-zlib = require('zlib');
+var root = path.join(__dirname, "..")
+  , test_root = path.join(root, "test")
+  , naught_main = path.join(root, "lib", "main.js")
+  , port = 11904
+  , hostname = 'localhost'
+  , timeout = 5
 
-root = path.join(__dirname, "..");
-test_root = path.join(root, "test");
-naught_main = path.join(root, "lib", "main.js");
-port = 11904;
-hostname = 'localhost';
-timeout = 5;
 
-function exec(cmd, args, opts, cb){
-  var bin, stdout, stderr;
-  if (args == null) args = []
-  if (opts == null) opts = {}
-  if (cb == null) cb = function(){};
-  bin = spawn(cmd, args, opts);
-  stdout = ""
-  bin.stdout.setEncoding('utf8')
-  bin.stdout.on('data', function(data) {
-    stdout += data;
-  });
-  stderr = ""
-  bin.stderr.setEncoding('utf8')
-  bin.stderr.on('data', function(data) {
-    stderr += data;
-  });
-  bin.on('close', function(code, signal) {
-    cb(stdout, stderr, code, signal);
-  });
-}
-
-function import$(obj, src){
-  var key, own = {}.hasOwnProperty;
-  for (key in src) if (own.call(src, key)) obj[key] = src[key];
-  return obj;
-}
-
-function naught_exec(args, env, cb) {
-  if (env == null) env = {}
-  import$(import$({}, process.env), env)
-  exec(process.execPath, [naught_main].concat(args), {
-    cwd: __dirname,
-    env: env
-  }, function(stdout, stderr, code, signal) {
-    cb(stdout, stderr, code);
-  });
-}
-
-function collectLogFiles(test_path, cb) {
-  fs.readdir(path.join(test_root, test_path), function (err, files) {
-    if (err) return cb(err);
-    files.sort()
-    if (! /\.gz$/.test(files[0])) {
-      files.push(files.shift());
-    }
-    async.map(files, function (file, cb) {
-      fs.readFile(path.join(test_root, test_path, file), function (err, data) {
-        if (err) return cb(err);
-        if (/\.gz$/.test(file)) {
-          zlib.gunzip(data, function (err, data) {
-            if (err) return cb(err);
-            cb(null, {file: file, data: data});
-          });
-        } else {
-          cb(null, {file: file, data: data});
-        }
-      });
-    }, function (err, results) {
-      if (err) return cb(err);
-      var full_data;
-      full_data = "";
-      results.forEach(function(item) {
-        full_data += item.data.toString();
-      });
-      cb(null, results, full_data);
-    });
-  });
-}
-
-function use(script) {
-  return {
-    info: "(test setup) use " + script,
-    fn: function (cb) {
-      ncp(path.join(test_root, script), path.join(test_root, "server.js"), cb);
-    },
-  };
-}
-
-function mkdir(dir) {
-  return {
-    info: "(test setup) mkdir " + dir,
-    fn: function (cb) {
-      mkdirp(path.join(test_root, dir), cb);
-    },
-  };
-}
-
-function rm(files) {
-  return {
-    info: "(test setup) rm " + files.join(" "),
-    fn: function (cb) {
-      async.forEach(files, function (item, cb) {
-        fs.unlink(path.join(test_root, item), cb);
-      }, cb);
-    },
-  }
-}
-
-function remove(files) {
-  return {
-    info: "(test setup) rm -rf " + files.join(" "),
-    fn: function (cb) {
-      async.forEach(files, function (item, cb) {
-        rimraf(path.join(test_root, item), cb);
-      }, cb);
-    },
-  }
-}
-
-function get(info, url, expected_resp) {
-  return {
-    info: info,
-    fn: function (cb) {
-      http.request({
-        hostname: hostname,
-        port: port,
-        path: url,
-      }, function (res) {
-        var body;
-        assertEqual(res.statusCode, 200);
-        body = ""
-        res.on('data', function(data) {
-          body += data;
-        });
-        res.on('end', function() {
-          assertEqual(body, expected_resp);
-          cb();
-        });
-      }).end();
-    },
-  };
-}
-
-function assertEqual(actual, expected, msg) {
-  msg = msg || "";
-  assert(actual === expected, "actual:\n" + actual + "\nexpected:\n" + expected + "\n" + msg);
-}
-
-steps = [
+var steps = [
   use("server1.js"),
   {
     info: "ability to start a server",
@@ -488,6 +349,9 @@ steps = [
   },
 ];
 
+var step_count = steps.length;
+doStep();
+
 function doStep() {
   var step, interval;
 
@@ -509,5 +373,141 @@ function doStep() {
   });
 }
 
-step_count = steps.length;
-doStep();
+function exec(cmd, args, opts, cb){
+  var bin, stdout, stderr;
+  if (args == null) args = []
+  if (opts == null) opts = {}
+  if (cb == null) cb = function(){};
+  bin = spawn(cmd, args, opts);
+  stdout = ""
+  bin.stdout.setEncoding('utf8')
+  bin.stdout.on('data', function(data) {
+    stdout += data;
+  });
+  stderr = ""
+  bin.stderr.setEncoding('utf8')
+  bin.stderr.on('data', function(data) {
+    stderr += data;
+  });
+  bin.on('close', function(code, signal) {
+    cb(stdout, stderr, code, signal);
+  });
+}
+
+function import$(obj, src){
+  var key, own = {}.hasOwnProperty;
+  for (key in src) if (own.call(src, key)) obj[key] = src[key];
+  return obj;
+}
+
+function naught_exec(args, env, cb) {
+  if (env == null) env = {}
+  import$(import$({}, process.env), env)
+  exec(process.execPath, [naught_main].concat(args), {
+    cwd: __dirname,
+    env: env
+  }, function(stdout, stderr, code, signal) {
+    cb(stdout, stderr, code);
+  });
+}
+
+function collectLogFiles(test_path, cb) {
+  fs.readdir(path.join(test_root, test_path), function (err, files) {
+    if (err) return cb(err);
+    files.sort()
+    if (! /\.gz$/.test(files[0])) {
+      files.push(files.shift());
+    }
+    async.map(files, function (file, cb) {
+      fs.readFile(path.join(test_root, test_path, file), function (err, data) {
+        if (err) return cb(err);
+        if (/\.gz$/.test(file)) {
+          zlib.gunzip(data, function (err, data) {
+            if (err) return cb(err);
+            cb(null, {file: file, data: data});
+          });
+        } else {
+          cb(null, {file: file, data: data});
+        }
+      });
+    }, function (err, results) {
+      if (err) return cb(err);
+      var full_data;
+      full_data = "";
+      results.forEach(function(item) {
+        full_data += item.data.toString();
+      });
+      cb(null, results, full_data);
+    });
+  });
+}
+
+function use(script) {
+  return {
+    info: "(test setup) use " + script,
+    fn: function (cb) {
+      ncp(path.join(test_root, script), path.join(test_root, "server.js"), cb);
+    },
+  };
+}
+
+function mkdir(dir) {
+  return {
+    info: "(test setup) mkdir " + dir,
+    fn: function (cb) {
+      mkdirp(path.join(test_root, dir), cb);
+    },
+  };
+}
+
+function rm(files) {
+  return {
+    info: "(test setup) rm " + files.join(" "),
+    fn: function (cb) {
+      async.forEach(files, function (item, cb) {
+        fs.unlink(path.join(test_root, item), cb);
+      }, cb);
+    },
+  }
+}
+
+function remove(files) {
+  return {
+    info: "(test setup) rm -rf " + files.join(" "),
+    fn: function (cb) {
+      async.forEach(files, function (item, cb) {
+        rimraf(path.join(test_root, item), cb);
+      }, cb);
+    },
+  }
+}
+
+function get(info, url, expected_resp) {
+  return {
+    info: info,
+    fn: function (cb) {
+      http.request({
+        hostname: hostname,
+        port: port,
+        path: url,
+      }, function (res) {
+        var body;
+        assertEqual(res.statusCode, 200);
+        body = ""
+        res.on('data', function(data) {
+          body += data;
+        });
+        res.on('end', function() {
+          assertEqual(body, expected_resp);
+          cb();
+        });
+      }).end();
+    },
+  };
+}
+
+function assertEqual(actual, expected, msg) {
+  msg = msg || "";
+  assert(actual === expected, "actual:\n" + actual + "\nexpected:\n" + expected + "\n" + msg);
+}
+
