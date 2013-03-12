@@ -29,10 +29,10 @@
   "author": "Andrew Kelley",
   "license": "MIT",
   "engines": {
-    "node": ">=0.8.2 <0.10.0"
+    "node": ">=0.8.2"
   },
   "devDependencies": {
-    "coco": "~0.8.1",
+    "coco": "0.8.1",
     "ncp": "~0.2.6",
     "rimraf": "~2.0.2"
   },
