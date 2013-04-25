@@ -15,8 +15,6 @@
     "daemonize"
   ],
   "scripts": {
-    "dev": "npm install && coke watch",
-    "build": "coke build",
     "test": "node test/test.js"
   },
   "bin": {
@@ -32,7 +30,6 @@
     "node": ">=0.8.2"
   },
   "devDependencies": {
-    "coco": "0.8.1",
     "ncp": "~0.2.6",
     "rimraf": "~2.0.2"
   },

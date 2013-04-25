@@ -165,17 +165,3 @@ CLI:
 
         Displays help for cmd.
 
-Installation:
--------------
-
-    $ sudo npm install -g naught
-
-Developing:
------------
-
-    $ npm run dev
-
-License:
---------
-
-    MIT (see LICENSE)
