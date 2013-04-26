@@ -18,6 +18,16 @@ var root = path.join(__dirname, "..")
 
 
 var steps = [
+  {
+    info: "version command",
+    fn: function (cb) {
+      naught_exec(["version"], {}, function(stdout, stderr, code) {
+        assertEqual(stdout.trim(), require("../package.json").version);
+        assertEqual(code, 0);
+        cb();
+      });
+    },
+  },
   use("server1.js"),
   {
     info: "ability to start a server",
