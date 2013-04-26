@@ -160,6 +160,9 @@ CLI:
 
         Uses `naught.ipc` by default.
 
+    naught version
+
+        Prints the version of naught and exits.
 
     naught help [cmd]
 
