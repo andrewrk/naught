@@ -1,6 +1,6 @@
 {
-  "name": "naught",
-  "version": "0.4.3",
+  "name": "naught2",
+  "version": "0.0.1",
   "description": "zero downtime deployment for your node.js server",
   "keywords": [
     "zero",
@@ -22,9 +22,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/indabamusic/naught.git"
+    "url": "git://github.com/mathrawka/naught2.git"
   },
   "author": "Andrew Kelley",
+  "maintainers": [
+    {
+      "name": "Jon Keating",
+      "email:" "jon@licq.org"
+    }
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=0.8.2"
