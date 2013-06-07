@@ -284,6 +284,59 @@ var steps = [
       });
     },
   },
+  use("server6.js"),
+  {
+    info: "(test setup) start server6 up",
+    fn: function (cb) {
+      naught_exec(["start", "server.js"], {
+        PORT: port,
+        hi: "server6 says hi",
+      }, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "workers online: 1\n")
+        assertEqual(code, 0)
+        cb();
+      });
+    }
+  },
+  get("(test setup) have server send offline message", "/offline", "Going offline"),
+  {
+    info: "make sure offline message spawns a new server",
+    fn: function (cb) {
+      // Wait for the server to go offline, spawn a new one, and have the old one die
+      setTimeout(function() {
+        fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
+          assertEqual(contents,
+            "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
+            "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+            "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
+            "WorkerOffline. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+            "SpawnNew. booting: 1, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+            "WorkerOnline. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
+            "Ready. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
+            "WorkerDeath. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n"
+                     );
+          cb();
+        });
+      }, 600);
+    },
+  },
+  {
+    info: "(test setup) stopping server",
+    fn: function (cb) {
+      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 var step_count = steps.length;

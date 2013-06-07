@@ -4,6 +4,7 @@ Features:
 ---------
 
  * Zero downtime code deployment
+ * Zero downtime crashes
  * Ability to change environment variables of workers with zero downtime
  * Resuscitation - when a worker dies it is restarted
  * Redirect worker stdout and stderr to rotating gzipped log files
@@ -50,6 +51,70 @@ To use naught, your node.js server has 2 requirements.
 
    When you receive the `shutdown` message, either close all open
    connections or call `process.exit()`.
+
+Zero Downtime Crashes:
+----------------------
+
+What is the difference between zero downtime crashes and zero downtime deploys?
+
+When a node.js process crashes it is a common practice to just exit the
+process. In the case of a web server, that forcefully ends the execution of all
+other connections, resulting in users getting an error. In addition, whatever
+was being executed, just stops. As long as your database is using transactions
+or two-phase commits, this is not a *critical* issue. However, we have zero
+downtime deploys, so why show a cryptic error message if that can be avoided?
+
+To take advantage of being able to have zero downtime deploys, you will want to
+have a way of catching the uncaught exceptions that cause crashes. There are
+two ways:
+
+- [Domains](http://nodejs.org/api/domain.html)
+- [uncaughtException](http://nodejs.org/api/process.html#process_event_uncaughtexception)
+
+The documentation says to use Domains, so use that unless you have a better
+reason.
+
+The below example assumes this is for an express app. If it is not, suit it to
+your needs.
+
+1. Setup domain
+
+An easy way is to use [express-domain-errors](https://npmjs.org/package/express-domain-errors)
+
+2. Send offline message to naught from the domain error handler
+
+   ```js
+   var domainError = require('express-domain-errors')
+     , domain = require('domain')
+     , serverDomain = domain.create()
+     , gracefulExit = require('express-gracefull-exit')
+     , express = require('express')
+     , app
+   ```
+
+   ```js
+   function sendOfflineMsg() {
+     if (process.send) process.send('Offline')
+   }
+
+   function doGracefulExit(err) {
+     gracefulExit.gracefulExitHandler(app, server)
+   }
+
+   serverDomain.run(function() {
+     app = express()
+
+     app.use(domainError(sendOfflineMsg, doGracefulExit))
+
+     // Setup app as normal
+     // ...
+
+     server = app.listen(8000 || process.env.PORT)
+     server.on('listening', function() {
+        if (process.send) process.send('online')
+     })
+   })
+   ```
 
 Tip:
 ----
