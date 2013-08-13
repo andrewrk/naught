@@ -37,8 +37,9 @@ var steps = [
         hi: "sup dawg",
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
         assertEqual(stdout, "workers online: 1\n")
         assertEqual(code, 0)
         cb();
@@ -74,10 +75,10 @@ var steps = [
     fn: function (cb) {
       naught_exec(["deploy"], {hi: "hola"}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "SpawnNew. booting: 0, online: 1, dying: 0, new_booting: 1, new_online: 0\n" +
-          "NewOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 1\n" +
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 1\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 1\n" +
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
           "done\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
@@ -91,8 +92,8 @@ var steps = [
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
@@ -135,19 +136,20 @@ var steps = [
     fn: function (cb) {
       fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
         assertEqual(contents,
-          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "Status. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "Status. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "SpawnNew. booting: 0, online: 1, dying: 0, new_booting: 1, new_online: 0\n" +
-          "NewOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 1\n" +
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 1\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 1\n" +
-          "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "Shutdown. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "Status. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "Status. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "Shutdown. booting: 0, online: 0, dying: 0, new_online: 0\n");
         cb();
       });
     },
@@ -174,12 +176,17 @@ var steps = [
         PORT: port,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "Bootup. booting: 5, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 4, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 3, online: 2, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 2, online: 3, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 1, online: 4, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 5, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 2, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 3, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 4, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 5, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 4, online: 0, dying: 0, new_online: 1\n" +
+          "NewOnline. booting: 3, online: 0, dying: 0, new_online: 2\n" +
+          "NewOnline. booting: 2, online: 0, dying: 0, new_online: 3\n" +
+          "NewOnline. booting: 1, online: 0, dying: 0, new_online: 4\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 5\n");
         assertEqual(stdout, "workers online: 5\n")
         assertEqual(code, 0)
         cb();
@@ -196,16 +203,16 @@ var steps = [
     fn: function (cb) {
       naught_exec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "ShutdownOld. booting: 0, online: 4, dying: 1, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 3, dying: 2, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 2, dying: 3, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 1, dying: 4, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 0, dying: 5, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 4, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 3, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 4, dying: 1, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 3, dying: 2, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 2, dying: 3, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 1, dying: 4, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 5, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 4, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 3, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
@@ -221,9 +228,11 @@ var steps = [
         PORT: port,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "Bootup. booting: 2, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 1, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 2, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 2, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 1, online: 0, dying: 0, new_online: 1\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 2\n");
         assertEqual(stdout, "workers online: 2\n")
         assertEqual(code, 0)
         cb();
@@ -235,13 +244,13 @@ var steps = [
     fn: function (cb) {
       naught_exec(["stop", "--timeout", "0.3"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "ShutdownOld. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
-          "ShutdownOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
-          "Timeout. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
-          "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
-          "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 1, dying: 1, new_online: 0\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "Timeout. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "DestroyOld. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "DestroyOld. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
@@ -263,8 +272,9 @@ var steps = [
         PORT: port,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
         assertEqual(stdout, "workers online: 1\n")
         assertEqual(code, 0)
         cb();
@@ -277,8 +287,8 @@ var steps = [
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
@@ -294,8 +304,9 @@ var steps = [
         hi: "server6 says hi",
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-          "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n");
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
         assertEqual(stdout, "workers online: 1\n")
         assertEqual(code, 0)
         cb();
@@ -310,14 +321,15 @@ var steps = [
       setTimeout(function() {
         fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
           assertEqual(contents,
-            "Bootup. booting: 1, online: 0, dying: 0, new_booting: 0, new_online: 0\n" +
-            "WorkerOnline. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-            "Ready. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n" +
-            "WorkerOffline. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-            "SpawnNew. booting: 1, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-            "WorkerOnline. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
-            "Ready. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
-            "WorkerDeath. booting: 0, online: 1, dying: 0, new_booting: 0, new_online: 0\n"
+            "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+            "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+            "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+            "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+            "WorkerOffline. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+            "SpawnNew. booting: 1, online: 0, dying: 1, new_online: 0\n" +
+            "WorkerOnline. booting: 0, online: 1, dying: 1, new_online: 0\n" +
+            "Ready. booting: 0, online: 1, dying: 1, new_online: 0\n" +
+            "WorkerDeath. booting: 0, online: 1, dying: 0, new_online: 0\n"
                      );
           cb();
         });
@@ -329,8 +341,8 @@ var steps = [
     fn: function (cb) {
       naught_exec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-          "ShutdownOld. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
-          "OldExit. booting: 0, online: 0, dying: 0, new_booting: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
