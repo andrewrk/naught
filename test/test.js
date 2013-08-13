@@ -237,6 +237,7 @@ var steps = [
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 1, dying: 1, new_booting: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
+          "Timeout. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "DestroyOld. booting: 0, online: 0, dying: 2, new_booting: 0, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 1, new_booting: 0, new_online: 0\n" +
