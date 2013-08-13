@@ -94,7 +94,7 @@ An easy way is to use [express-domain-errors](https://npmjs.org/package/express-
 
    ```js
    function sendOfflineMsg() {
-     if (process.send) process.send('Offline')
+     if (process.send) process.send('offline')
    }
 
    function doGracefulExit(err) {
