@@ -30,6 +30,19 @@ var steps = [
   },
   use("server1.js"),
   {
+    info: "should get error message when starting with invalid path",
+    fn: function(cb) {
+      naught_exec(["start", "--ipc-file", "/invalid/path/foo.ipc", "server.js"], {},
+          function(stdout, stderr, code)
+      {
+        assertEqual(stderr, "unable to start daemon: EACCES, mkdir '/invalid'\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 1);
+        cb();
+      });
+    },
+  },
+  {
     info: "ability to start a server",
     fn: function (cb) {
       naught_exec(["start", "server.js"], {
