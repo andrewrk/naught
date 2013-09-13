@@ -148,6 +148,10 @@ CLI:
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 
+        `worker-count` is evaluated with eq.js. You can optionally use the `cpus`
+        variable. eg: cpus + 2. You can use all the Math methods. eg: round(cpus / 2).
+        Available options and their defaults:
+
         Available options and their defaults:
 
         --worker-count 1
