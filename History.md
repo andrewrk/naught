@@ -1,3 +1,7 @@
+0.7.0 / 2013-09-13
+==================
+  * `worker-count` is evaluated with `eq` and you can use the `cpus` variable.
+
 0.6.1 / 2013-09-08
 ==================
   * fix: starting with custom ipc file fails with no error if path is invalid
