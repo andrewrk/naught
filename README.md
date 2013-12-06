@@ -52,24 +52,28 @@ To use naught, your node.js server has 2 requirements.
    When you receive the `shutdown` message, either close all open
    connections or call `process.exit()`.
 
-Zero Downtime Crashes:
-----------------------
+Gracefully Handling Exceptions
+------------------------------
 
-What is the difference between zero downtime crashes and zero downtime deploys?
+Another way you can use naught is to gracefully handle exceptions that would
+normally cause errors for users other than the one that triggered the
+exception.
 
-When a node.js process crashes it is a common practice to just exit the
-process. In the case of a web server, that forcefully ends the execution of all
-other connections, resulting in users getting an error. In addition, whatever
-was being executed, just stops. As long as your database is using transactions
-or two-phase commits, this is not a *critical* issue. However, we have zero
-downtime deploys, so why show a cryptic error message if that can be avoided?
+It is common practice to allow an uncaught exception to crash the Node.js
+process. In the case of a web server, that forcefully ends the execution
+of all other connections, resulting in more than a single user getting an
+error.
 
-To take advantage of being able to have zero downtime deploys, you will want to
-have a way of catching the uncaught exceptions that cause crashes. There are
-two ways:
+Using naught a worker can use the 'offline' message to announce that it is
+dying. At this point, naught prevents it from accepting new connections and
+spawns a replacement worker, allowing the dying worker to finish up with
+its current connections and do any cleanup necessary before finally perishing.
 
-- [Domains](http://nodejs.org/api/domain.html)
-- [uncaughtException](http://nodejs.org/api/process.html#process_event_uncaughtexception)
+To take advantage of this, you need a way of catching the uncaught exceptions
+that cause crashes. There are two ways:
+
+ * [Domains](http://nodejs.org/api/domain.html)
+ * [uncaughtException](http://nodejs.org/api/process.html#process_event_uncaughtexception)
 
 The documentation says to use Domains, so use that unless you have a better
 reason.
@@ -77,19 +81,19 @@ reason.
 The below example assumes this is for an express app. If it is not, suit it to
 your needs.
 
-1. Setup domain
+1. Setup domain.
 
-An easy way is to use [express-domain-errors](https://npmjs.org/package/express-domain-errors)
-
+   An easy way is to use [express-domain-errors](https://npmjs.org/package/express-domain-errors)
+   
 2. Send offline message to naught from the domain error handler
 
    ```js
-   var domainError = require('express-domain-errors')
-     , domain = require('domain')
-     , serverDomain = domain.create()
-     , gracefulExit = require('express-gracefull-exit')
-     , express = require('express')
-     , app
+   var domainError = require('express-domain-errors');
+   var domain = require('domain');
+   var serverDomain = domain.create();
+   var gracefulExit = require('express-gracefull-exit');
+   var express = require('express');
+   var app;
    ```
 
    ```js
