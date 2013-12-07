@@ -99,6 +99,42 @@ var steps = [
       });
     },
   },
+  {
+    info: "ability to deploy and increase workers count",
+    fn: function (cb) {
+      naught_exec(["deploy", "--worker-count", "2"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 2, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 1, online: 1, dying: 0, new_online: 1\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 2\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 2\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 2\n" +
+          "done\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  {
+    info: "ability to deploy and decrease workers count",
+    fn: function (cb) {
+      naught_exec(["deploy", "--worker-count", "1"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "SpawnNew. booting: 1, online: 2, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 2, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 1, dying: 1, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "done\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
   get("ability to change environment variables of workers", "/hi", "server2 hola"),
   {
     info: "ability to stop a running server",
@@ -129,6 +165,9 @@ var steps = [
     fn: function (cb) {
       fs.readFile(path.join(test_root, "stdout.log"), "utf8", function (err, contents) {
         assertEqual(contents, "server1 attempting to listen\n" +
+          "server2 attempting to listen\n" +
+          "server2 attempting to listen\n" +
+          "server2 attempting to listen\n" +
           "server2 attempting to listen\n");
         cb();
       });
@@ -139,6 +178,9 @@ var steps = [
     fn: function (cb) {
       fs.readFile(path.join(test_root, "stderr.log"), "utf8", function (err, contents) {
         assertEqual(contents, "server1 listening\n" +
+          "server2 listening\n" +
+          "server2 listening\n" +
+          "server2 listening\n" +
           "server2 listening\n");
         cb();
       });
@@ -148,8 +190,7 @@ var steps = [
     info: "naught log contains events",
     fn: function (cb) {
       fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
-        assertEqual(contents,
-          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+        assertEqual(contents, "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
           "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n" +
           "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
@@ -158,6 +199,20 @@ var steps = [
           "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 2, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 1, online: 1, dying: 0, new_online: 1\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 2\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 2\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 2\n" +
+          "Ready. booting: 0, online: 2, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 2, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 2, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 1, dying: 1, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 1\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
           "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
@@ -365,7 +420,24 @@ var steps = [
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
+function cleanUp() {
+  console.log("** Cleaning up previous tests content.")
+  deleteIfPresent(path.join(test_root, "stdout.log"));
+  deleteIfPresent(path.join(test_root, "stderr.log"));
+  deleteIfPresent(path.join(test_root, "naught.log"));
+  console.log("** Done cleaning up.")
+}
+
+function deleteIfPresent(filename) {
+  if (fs.existsSync(filename)) {
+    fs.unlinkSync(filename);
+  }
+}
+
 var step_count = steps.length;
+
+cleanUp();
+
 doStep();
 
 function doStep() {
