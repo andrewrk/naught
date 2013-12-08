@@ -217,6 +217,7 @@ CLI:
 
         Available options and their defaults:
 
+            --worker-count [as-before]
             --override-env true
             --timeout none
 
