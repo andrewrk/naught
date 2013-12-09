@@ -1,3 +1,11 @@
+1.0.0 / 2013-12-09
+==================
+  * remove eq.js worker-count arg parsing.
+
+0.8.0 / 2013-12-09
+==================
+  * ability to change worker count on deploy. Thanks AvnerCohen!
+
 0.7.0 / 2013-09-13
 ==================
   * `worker-count` is evaluated with `eq` and you can use the `cpus` variable.
