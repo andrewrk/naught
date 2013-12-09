@@ -152,9 +152,8 @@ CLI:
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 
-        `worker-count` is evaluated with eq.js. You can optionally use the `cpus`
-        variable. eg: cpus + 2. You can use all the Math methods. eg: round(cpus / 2).
-        Available options and their defaults:
+        `worker-count` is evaluated with eq.js, but that is deprecated, so you
+        should use numbers only for this value.
 
         Available options and their defaults:
 
@@ -213,10 +212,15 @@ CLI:
         used with the `start` command. If any variables are missing, the
         original values are left intact.
 
+        `worker-count` can be used to change the number of workers running. A
+        value of `0` means to keep the same number of workers. This is not
+        evaluated with eq.js because that functionality is deprecated.
+
         Uses `naught.ipc` by default.
 
         Available options and their defaults:
 
+            --worker-count 0
             --override-env true
             --timeout none
 
