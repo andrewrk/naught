@@ -1,4 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/indabamusic/naught.png)](http://travis-ci.org/indabamusic/naught)
+[![Build Status](https://secure.travis-ci.org/superjoe30/naught.png)](http://travis-ci.org/superjoe30/naught)
 
 Features:
 ---------
