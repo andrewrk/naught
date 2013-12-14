@@ -4,11 +4,11 @@ Features:
 ---------
 
  * Zero downtime code deployment
- * Zero downtime crashes
- * Ability to change environment variables of workers with zero downtime
+ * Ability to gracefully handle uncaught exceptions
  * Resuscitation - when a worker dies it is restarted
  * Redirect worker stdout and stderr to rotating gzipped log files
  * Runs as daemon, providing ability to start and stop
+ * Clustering - take advantage of multiple CPU cores
 
 Usage:
 ------
