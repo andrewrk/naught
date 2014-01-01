@@ -1,27 +1,27 @@
-var fs = require('fs')
-  , mkdirp = require('mkdirp')
-  , ncp = require('ncp').ncp
-  , rimraf = require('rimraf')
-  , http = require('http')
-  , spawn = require('child_process').spawn
-  , path = require("path")
-  , assert = require("assert")
-  , async = require("async")
-  , zlib = require('zlib')
+var fs = require('fs');
+var mkdirp = require('mkdirp');
+var ncp = require('ncp').ncp;
+var rimraf = require('rimraf');
+var http = require('http');
+var spawn = require('child_process').spawn;
+var path = require("path");
+var assert = require("assert");
+var async = require("async");
+var zlib = require('zlib');
 
-var root = path.join(__dirname, "..")
-  , test_root = path.join(root, "test")
-  , naught_main = path.join(root, "lib", "main.js")
-  , port = 11904
-  , hostname = 'localhost'
-  , timeout = 5
+var root = path.join(__dirname, "..");
+var test_root = path.join(root, "test");
+var NAUGHT_MAIN = path.join(root, "lib", "main.js");
+var PORT = 11904;
+var HOSTNAME = 'localhost';
+var TIMEOUT = 5000;
 
 
 var steps = [
   {
     info: "version command",
     fn: function (cb) {
-      naught_exec(["version"], {}, function(stdout, stderr, code) {
+      naughtExec(["version"], {}, function(stdout, stderr, code) {
         assertEqual(stdout.trim(), require("../package.json").version);
         assertEqual(code, 0);
         cb();
@@ -32,7 +32,7 @@ var steps = [
   {
     info: "should get error message when starting with invalid path",
     fn: function(cb) {
-      naught_exec(["start", "--ipc-file", "/invalid/path/foo.ipc", "server.js"], {},
+      naughtExec(["start", "--ipc-file", "/invalid/path/foo.ipc", "server.js"], {},
           function(stdout, stderr, code)
       {
         assertEqual(stderr, "unable to start daemon: EACCES, mkdir '/invalid'\n");
@@ -45,8 +45,8 @@ var steps = [
   {
     info: "ability to start a server",
     fn: function (cb) {
-      naught_exec(["start", "server.js"], {
-        PORT: port,
+      naughtExec(["start", "server.js"], {
+        PORT: PORT,
         hi: "sup dawg",
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
@@ -62,7 +62,7 @@ var steps = [
   {
     info: "starting a server twice prints the status of the running server",
     fn: function (cb) {
-      naught_exec(["start", "server.js"], {}, function(stdout, stderr, code) {
+      naughtExec(["start", "server.js"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
         assertEqual(stdout, "workers online: 1\n");
         assertEqual(code, 1)
@@ -73,7 +73,7 @@ var steps = [
   {
     info: "ability to query status of a running server",
     fn: function (cb) {
-      naught_exec(["status"], {}, function(stdout, stderr, code) {
+      naughtExec(["status"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
         assertEqual(stdout, "workers online: 1\n");
         assertEqual(code, 0)
@@ -86,7 +86,7 @@ var steps = [
   {
     info: "ability to deploy to a running server",
     fn: function (cb) {
-      naught_exec(["deploy"], {hi: "hola"}, function(stdout, stderr, code) {
+      naughtExec(["deploy"], {hi: "hola"}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
@@ -102,7 +102,7 @@ var steps = [
   {
     info: "ability to deploy and increase workers count",
     fn: function (cb) {
-      naught_exec(["deploy", "--worker-count", "2"], {}, function(stdout, stderr, code) {
+      naughtExec(["deploy", "--worker-count", "2"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
           "SpawnNew. booting: 2, online: 1, dying: 0, new_online: 0\n" +
@@ -120,7 +120,7 @@ var steps = [
   {
     info: "ability to deploy and decrease workers count",
     fn: function (cb) {
-      naught_exec(["deploy", "--worker-count", "1"], {}, function(stdout, stderr, code) {
+      naughtExec(["deploy", "--worker-count", "1"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "SpawnNew. booting: 1, online: 2, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 2, dying: 0, new_online: 1\n" +
@@ -139,7 +139,7 @@ var steps = [
   {
     info: "ability to stop a running server",
     fn: function (cb) {
-      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
@@ -152,7 +152,7 @@ var steps = [
   {
     info: "stopping a server twice prints helpful output",
     fn: function (cb) {
-      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stdout, "");
         assertEqual(stderr, "server not running\n");
         assertEqual(code, 1)
@@ -228,7 +228,7 @@ var steps = [
   {
     info: "cli accepts non-default args",
     fn: function (cb) {
-      naught_exec([
+      naughtExec([
           "start",
           "--worker-count", "5",
           "--ipc-file", "some/dir/ipc",
@@ -241,7 +241,7 @@ var steps = [
           "--custom1", "aoeu",
           "herp derp",
       ], {
-        PORT: port,
+        PORT: PORT,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
           "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
@@ -269,7 +269,7 @@ var steps = [
   {
     info: "ability to stop a running server with multiple workers",
     fn: function (cb) {
-      naught_exec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop", "some/dir/ipc"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 4, dying: 1, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 3, dying: 2, new_online: 0\n" +
@@ -292,8 +292,8 @@ var steps = [
   {
     info: "(test setup) starting a server that won't shut down",
     fn: function (cb) {
-      naught_exec(["start", "--worker-count", "2", "server.js"], {
-        PORT: port,
+      naughtExec(["start", "--worker-count", "2", "server.js"], {
+        PORT: PORT,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
           "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
@@ -310,7 +310,7 @@ var steps = [
   {
     info: "ability to stop a hanging server with a timeout",
     fn: function (cb) {
-      naught_exec(["stop", "--timeout", "0.3"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop", "--timeout", "0.3"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 1, dying: 1, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 0\n" +
@@ -329,7 +329,7 @@ var steps = [
   {
     info: "ability to pass command line arguments to node",
     fn: function (cb) {
-      naught_exec([
+      naughtExec([
           "start",
           "--node-args", "--harmony --use-strict",
           "--log", "/dev/null",
@@ -337,7 +337,7 @@ var steps = [
           "--stdout", "/dev/null",
           "server5.js",
       ], {
-        PORT: port,
+        PORT: PORT,
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
           "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
@@ -353,7 +353,7 @@ var steps = [
   {
     info: "(test setup) stopping server",
     fn: function (cb) {
-      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
@@ -367,8 +367,8 @@ var steps = [
   {
     info: "(test setup) start server6 up",
     fn: function (cb) {
-      naught_exec(["start", "server.js"], {
-        PORT: port,
+      naughtExec(["start", "server.js"], {
+        PORT: PORT,
         hi: "server6 says hi",
       }, function(stdout, stderr, code) {
         assertEqual(stderr,
@@ -407,7 +407,7 @@ var steps = [
   {
     info: "(test setup) stopping server",
     fn: function (cb) {
-      naught_exec(["stop"], {}, function(stdout, stderr, code) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
@@ -419,6 +419,11 @@ var steps = [
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
+
+var stepCount = steps.length;
+
+cleanUp();
+doStep();
 
 function cleanUp() {
   console.log("** Cleaning up previous tests content.")
@@ -434,27 +439,19 @@ function deleteIfPresent(filename) {
   }
 }
 
-var step_count = steps.length;
-
-cleanUp();
-
-doStep();
-
 function doStep() {
-  var step, interval;
-
-  step = steps.shift();
+  var step = steps.shift();
   process.stderr.write(step.info + "...")
-  interval = setTimeout(function() {
+  var interval = setTimeout(function() {
     fs.writeSync(process.stderr.fd, "timeout\n")
     process.exit(1);
-  }, timeout * 1000);
+  }, TIMEOUT);
   step.fn(function (err) {
     assert.ifError(err);
     clearTimeout(interval);
     process.stderr.write("pass\n");
     if (steps.length === 0) {
-      process.stderr.write(step_count + " tests passed\n");
+      process.stderr.write(stepCount + " tests passed\n");
     } else {
       doStep();
     }
@@ -462,17 +459,16 @@ function doStep() {
 }
 
 function exec(cmd, args, opts, cb){
-  var bin, stdout, stderr;
-  if (args == null) args = []
-  if (opts == null) opts = {}
-  if (cb == null) cb = function(){};
-  bin = spawn(cmd, args, opts);
-  stdout = ""
+  if (args == null) args = [];
+  if (opts == null) opts = {};
+  if (cb == null) cb = noop;
+  var bin = spawn(cmd, args, opts);
+  var stdout = ""
   bin.stdout.setEncoding('utf8')
   bin.stdout.on('data', function(data) {
     stdout += data;
   });
-  stderr = ""
+  var stderr = ""
   bin.stderr.setEncoding('utf8')
   bin.stderr.on('data', function(data) {
     stderr += data;
@@ -482,16 +478,17 @@ function exec(cmd, args, opts, cb){
   });
 }
 
-function import$(obj, src){
-  var key, own = {}.hasOwnProperty;
-  for (key in src) if (own.call(src, key)) obj[key] = src[key];
+function extend(obj, src) {
+  for (var key in src) {
+    obj[key] = src[key];
+  }
   return obj;
 }
 
-function naught_exec(args, env, cb) {
-  if (env == null) env = {}
-  import$(import$({}, process.env), env)
-  exec(process.execPath, [naught_main].concat(args), {
+function naughtExec(args, env, cb) {
+  if (env == null) env = {};
+  extend(extend({}, process.env), env);
+  exec(process.execPath, [NAUGHT_MAIN].concat(args), {
     cwd: __dirname,
     env: env
   }, function(stdout, stderr, code, signal) {
@@ -575,8 +572,8 @@ function get(info, url, expected_resp) {
     info: info,
     fn: function (cb) {
       http.request({
-        hostname: hostname,
-        port: port,
+        hostname: HOSTNAME,
+        port: PORT,
         path: url,
       }, function (res) {
         var body;
@@ -599,3 +596,4 @@ function assertEqual(actual, expected, msg) {
   assert(actual === expected, "actual:\n" + actual + "\nexpected:\n" + expected + "\n" + msg);
 }
 
+function noop() {}
