@@ -113,7 +113,7 @@ your needs.
      // Setup app as normal
      // ...
 
-     server = app.listen(8000 || process.env.PORT)
+     server = app.listen(process.env.PORT || 8000)
      server.on('listening', function() {
         if (process.send) process.send('online')
      })
