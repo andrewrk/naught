@@ -9,6 +9,7 @@ Features:
  * Redirect worker stdout and stderr to rotating gzipped log files
  * Runs as daemon, providing ability to start and stop
  * Clustering - take advantage of multiple CPU cores
+ * Integration with service wrappers such as [upstart](http://upstart.ubuntu.com/)
 
 Usage:
 ------
@@ -128,6 +129,15 @@ If you want to deploy on a restricted port such as 80 or 443 without sudo, try
 
 Note that there are 3 layers of process spawning between the naught CLI
 and your server. So you'll want to use the `--deep` option with authbind.
+
+
+Foreground Mode:
+----------------
+
+It may make sense to use naught with other process monitoring software such as
+upstart. For this reason, naught supports running in the foreground with the
+`--daemon-mode false` argument. naught will then listen to the SIGHUP signal
+to do a deploy and the SIGTERM and SIGINT signals to do a shutdown.
 
 CLI:
 ----
