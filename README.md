@@ -149,6 +149,12 @@ CLI:
         If you don't want a particular log, use `/dev/null` for the path. Naught
         special cases this filename and disables that log altogether.
 
+        When running in `daemon-mode` `false`, naught will start the master
+        process and then block. It listens to SIGHUP for restarting and SIGTERM
+        for stopping. In this situation you may use `-` for `stderr` and/or
+        `stdout` which will redirect the respective streams to naught's output
+        streams instead of a log file.
+
         Creates an `ipc-file` which naught uses to communicate with your
         server once it has started.
 
@@ -161,6 +167,7 @@ CLI:
         --stderr stderr.log
         --max-log-size 10485760
         --cwd .
+        --daemon-mode true
         --node-args ''
 
 

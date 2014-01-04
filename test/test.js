@@ -4,10 +4,12 @@ var ncp = require('ncp').ncp;
 var rimraf = require('rimraf');
 var http = require('http');
 var spawn = require('child_process').spawn;
+var fork = require('child_process').fork;
 var path = require("path");
 var assert = require("assert");
 var async = require("async");
 var zlib = require('zlib');
+var assertDeepEqual = require('whynoteq').assertDeepEqual;
 
 var root = path.join(__dirname, "..");
 var test_root = path.join(root, "test");
@@ -16,6 +18,9 @@ var PORT = 11904;
 var HOSTNAME = 'localhost';
 var TIMEOUT = 5000;
 
+
+// naught child process when runnning in no daemon mode
+var bin;
 
 var steps = [
   {
@@ -53,8 +58,8 @@ var steps = [
           "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
           "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
-        assertEqual(stdout, "workers online: 1\n")
-        assertEqual(code, 0)
+        assertEqual(stdout, "workers online: 1\n");
+        assertEqual(code, 0);
         cb();
       });
     },
@@ -65,7 +70,7 @@ var steps = [
       naughtExec(["start", "server.js"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
         assertEqual(stdout, "workers online: 1\n");
-        assertEqual(code, 1)
+        assertEqual(code, 1);
         cb();
       });
     },
@@ -76,7 +81,7 @@ var steps = [
       naughtExec(["status"], {}, function(stdout, stderr, code) {
         assertEqual(stderr, "");
         assertEqual(stdout, "workers online: 1\n");
-        assertEqual(code, 0)
+        assertEqual(code, 0);
         cb();
       });
     },
@@ -223,6 +228,159 @@ var steps = [
     },
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
+  use("server1.js"),
+  {
+    info: "start server in no daemon mode",
+    fn: function (cb) {
+      var expectedMessages = [
+        {
+          event: 'IpcListening',
+        },
+        {
+          event: 'Bootup',
+          waitingFor: null,
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 0,
+            new_online: 0,
+          },
+        },
+        {
+          event: 'SpawnNew',
+          waitingFor: 'new',
+          count: {
+            booting: 1,
+            online: 0,
+            dying: 0,
+            new_online: 0,
+          },
+        },
+        {
+          event: 'NewOnline',
+          waitingFor: 'new',
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 0,
+            new_online: 1,
+          },
+        },
+      ];
+      naughtSpawn(["start", "--daemon-mode", "false", "server.js"], {
+        PORT: PORT,
+        hi: "no daemons here",
+      });
+      expectMessages(expectedMessages, cb);
+    },
+  },
+  get("make sure the server is up", "/hi", "server1 no daemons here"),
+  use("server2.js"),
+  {
+    info: "SIGHUP in no daemon mode causes a deploy",
+    fn: function (cb) {
+      var expectedMessages = [
+        {
+          event: 'SpawnNew',
+          waitingFor: 'new',
+          count: {
+            booting: 1,
+            online: 1,
+            dying: 0,
+            new_online: 0,
+          },
+        },
+        {
+          event: 'NewOnline',
+          waitingFor: 'new',
+          count: {
+            booting: 0,
+            online: 1,
+            dying: 0,
+            new_online: 1,
+          },
+        },
+        {
+          event: 'ShutdownOld',
+          waitingFor: 'old',
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 1,
+            new_online: 1,
+          },
+        },
+        {
+          event: 'OldExit',
+          waitingFor: 'old',
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 0,
+            new_online: 1,
+          },
+        },
+        {
+          event: 'Ready',
+          waitingFor: null,
+          count: {
+            booting: 0,
+            online: 1,
+            dying: 0,
+            new_online: 0,
+          },
+        },
+      ];
+      expectMessages(expectedMessages, cb);
+      bin.kill('SIGHUP');
+    },
+  },
+  get("make sure the deploy worked", "/hi", "server2 no daemons here"),
+  {
+    info: "SIGTERM in no daemon mode causes a stop",
+    fn: function (cb) {
+      var expectedMessages = [
+        {
+          event: 'ShutdownOld',
+          waitingFor: 'shutdown',
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 1,
+            new_online: 0,
+          },
+        },
+        {
+          event: 'OldExit',
+          waitingFor: 'shutdown',
+          count: {
+            booting: 0,
+            online: 0,
+            dying: 0,
+            new_online: 0,
+          },
+        },
+      ];
+
+      var exited = false;
+      bin.on('exit', function(code) {
+        assert.strictEqual(code, 0);
+        exited = true;
+        done();
+      });
+
+      var gotMessages = false;
+      expectMessages(expectedMessages, function() {
+        gotMessages = true;
+        done();
+      });
+      bin.kill('SIGTERM');
+
+      function done() {
+        if (exited && gotMessages) cb();
+      }
+    },
+  },
   use("server3.js"),
   mkdir("foo"),
   {
@@ -485,9 +643,16 @@ function extend(obj, src) {
   return obj;
 }
 
+function naughtSpawn(args, env, cb) {
+  env = extend(extend({}, process.env), env || {});
+  bin = fork(NAUGHT_MAIN, args, {
+    cwd: __dirname,
+    env: env,
+  });
+}
+
 function naughtExec(args, env, cb) {
-  if (env == null) env = {};
-  extend(extend({}, process.env), env);
+  env = extend(extend({}, process.env), env || {});
   exec(process.execPath, [NAUGHT_MAIN].concat(args), {
     cwd: __dirname,
     env: env
@@ -589,6 +754,21 @@ function get(info, url, expected_resp) {
       }).end();
     },
   };
+}
+
+function expectMessages(msgList, cb) {
+  bin.on('message', onMessage);
+
+  function onMessage(message) {
+    var expected = msgList.shift();
+    assertDeepEqual(message, expected, "expected: " +
+        JSON.stringify(expected, null, 2) +
+        "\ngot: " + JSON.stringify(message, null, 2));
+    if (msgList.length === 0) {
+      bin.removeListener('message', onMessage);
+      cb();
+    }
+  }
 }
 
 function assertEqual(actual, expected, msg) {
