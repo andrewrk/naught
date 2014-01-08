@@ -1,3 +1,9 @@
+1.1.0 / 2014-01-08
+==================
+  * add ability to run in foreground with `--daemon-mode false`.
+  * daemon listens for SIGTERM to do `stop` and SIGHUP to do `deploy`.
+  * dropped support for node v0.8.x
+
 1.0.0 / 2013-12-09
 ==================
   * remove eq.js worker-count arg parsing.

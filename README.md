@@ -9,7 +9,7 @@ Features:
  * Redirect worker stdout and stderr to rotating gzipped log files
  * Runs as daemon, providing ability to start and stop
  * Clustering - take advantage of multiple CPU cores
- * Integration with service wrappers such as [upstart](http://upstart.ubuntu.com/)
+ * Properly handles SIGTERM and SIGHUP for integration with service wrappers
 
 Usage:
 ------
@@ -131,13 +131,32 @@ Note that there are 3 layers of process spawning between the naught CLI
 and your server. So you'll want to use the `--deep` option with authbind.
 
 
-Foreground Mode:
-----------------
+Using a service wrapper:
+------------------------
 
-It may make sense to use naught with other process monitoring software such as
-upstart. For this reason, naught supports running in the foreground with the
-`--daemon-mode false` argument. naught will then listen to the SIGHUP signal
-to do a deploy and the SIGTERM and SIGINT signals to do a shutdown.
+It may make sense to use naught with other process monitoring software.
+For this reason, naught supports listening to SIGTERM to do a `stop`
+operation, and `SIGHUP` to do a `deploy` operation. You may also run
+in the foregroun with `--daemon-mode false`.
+
+When you run with `--daemon-mode true` (the default), the process tree looks
+like this:
+
+ * CLI process, spawns the following (detached) and then exits:
+   * daemon process, listens for SIGTERM/SIGHUP, spawns the following and
+     stays running:
+     * worker 1
+     * worker 2
+     * etc
+
+When you run with `--daemon-mode false`, the process tree looks like this:
+
+ * CLI process, listens for SIGTERM/SIGHUP, spawns the following and stays
+   running:
+   * cluster master process, spawns the following and stays running:
+     * worker 1
+     * worker 2
+     * etc
 
 CLI:
 ----
