@@ -136,7 +136,7 @@ Using a service wrapper:
 
 It may make sense to use naught with other process monitoring software.
 For this reason, naught supports listening to SIGTERM to do a `stop`
-operation, and `SIGHUP` to do a `deploy` operation. You may also run
+operation, and SIGHUP to do a `deploy` operation. You may also run
 in the foregroun with `--daemon-mode false`.
 
 When you run with `--daemon-mode true` (the default), the process tree looks
