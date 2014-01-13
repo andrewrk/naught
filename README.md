@@ -92,7 +92,7 @@ your needs.
    var domainError = require('express-domain-errors');
    var domain = require('domain');
    var serverDomain = domain.create();
-   var gracefulExit = require('express-gracefull-exit');
+   var gracefulExit = require('express-graceful-exit');
    var express = require('express');
    var app;
    ```
