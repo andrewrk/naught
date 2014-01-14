@@ -10,6 +10,7 @@ Features:
  * Runs as daemon, providing ability to start and stop
  * Clustering - take advantage of multiple CPU cores
  * Properly handles SIGTERM and SIGHUP for integration with service wrappers
+ * Supports POSIX operating systems (does not support Windows)
 
 Usage:
 ------
