@@ -1,4 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/superjoe30/naught.png)](http://travis-ci.org/superjoe30/naught)
+[![Build Status](https://secure.travis-ci.org/andrewrk/naught.png)](http://travis-ci.org/andrewrk/naught)
 
 Features:
 ---------
