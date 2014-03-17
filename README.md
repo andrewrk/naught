@@ -256,6 +256,7 @@ CLI:
             --worker-count 0
             --override-env true
             --timeout none
+            --cwd .
 
 
     naught deploy-abort [ipc-file]
