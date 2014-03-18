@@ -140,7 +140,25 @@ var steps = [
       });
     },
   },
+  get("worker cwd defaults to naught cwd", "/cwd", __dirname),
+  {
+    info: "ability to deploy and pass cwd",
+    fn: function (cb) {
+      naughtExec(["deploy", "--cwd", path.resolve('./lib')], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "done\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
   get("ability to change environment variables of workers", "/hi", "server2 hola"),
+  get("ability to change cwd of workers", "/cwd", path.resolve('./lib')),
   {
     info: "ability to stop a running server",
     fn: function (cb) {
@@ -173,6 +191,7 @@ var steps = [
           "server2 attempting to listen\n" +
           "server2 attempting to listen\n" +
           "server2 attempting to listen\n" +
+          "server2 attempting to listen\n" +
           "server2 attempting to listen\n");
         cb();
       });
@@ -183,6 +202,7 @@ var steps = [
     fn: function (cb) {
       fs.readFile(path.join(test_root, "stderr.log"), "utf8", function (err, contents) {
         assertEqual(contents, "server1 listening\n" +
+          "server2 listening\n" +
           "server2 listening\n" +
           "server2 listening\n" +
           "server2 listening\n" +
@@ -218,6 +238,11 @@ var steps = [
           "ShutdownOld. booting: 0, online: 1, dying: 1, new_online: 1\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 1\n" +
           "OldExit. booting: 0, online: 0, dying: 1, new_online: 1\n" +
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+          "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
+          "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 1\n" +
           "OldExit. booting: 0, online: 0, dying: 0, new_online: 1\n" +
           "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
           "ShutdownOld. booting: 0, online: 0, dying: 1, new_online: 0\n" +
