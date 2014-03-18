@@ -146,9 +146,10 @@ like this:
  * CLI process, spawns the following (detached) and then exits:
    * daemon process, listens for SIGTERM/SIGHUP, spawns the following and
      stays running:
-     * worker 1
-     * worker 2
-     * etc
+     * cluster master process, spawns the following and stays running:
+       * worker 1
+       * worker 2
+       * etc
 
 When you run with `--daemon-mode false`, the process tree looks like this:
 
