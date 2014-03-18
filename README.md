@@ -147,9 +147,9 @@ like this:
    * daemon process, listens for SIGTERM/SIGHUP, spawns the following and
      stays running:
      * cluster master process, spawns the following and stays running:
-       * worker 1
-       * worker 2
-       * etc
+         * worker 1
+         * worker 2
+         * etc
 
 When you run with `--daemon-mode false`, the process tree looks like this:
 
