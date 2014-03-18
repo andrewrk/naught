@@ -1,3 +1,7 @@
+1.2.0 / 2014-03-18
+==================
+  * provide 'cwd' option during deploy. Thanks [dmcaulay]
+
 1.1.0 / 2014-01-08
 ==================
   * add ability to run in foreground with `--daemon-mode false`.
