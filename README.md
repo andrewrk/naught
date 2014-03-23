@@ -250,6 +250,18 @@ CLI:
         `worker-count` can be used to change the number of workers running. A
         value of `0` means to keep the same number of workers.
 
+        `cwd` can be used to change the cwd directory of the master process.
+        This allows you to release in different directories. Unfortunately,
+        this option doesn't update the script location. For example, if you
+        start naught `naught start --cwd /release/1 server.js` and deploy
+        `naught deploy --cwd /release/2` the script file will not change from
+        '/release/1/server.js' to '/release/2/server.js'. You have to create
+        a symlink and pass the full symlink path to naught start
+        '/current/server.js'. After creating the symlink naught starts the
+        correct script, but the cwd is still old and require loads files from
+        from the old directory. The cwd option allows you to update the cwd
+        to the new directory. It defaults to naught's cwd.
+
         Uses `naught.ipc` by default.
 
         Available options and their defaults:
