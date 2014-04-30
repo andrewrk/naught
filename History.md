@@ -1,3 +1,8 @@
+1.3.0 / 2014-04-30
+==================
+  * resolve cwd path in main naught script. Thanks [dmcaulay]
+  * ability to create a pidfile. Thanks [framp]
+
 1.2.0 / 2014-03-18
 ==================
   * provide 'cwd' option during deploy. Thanks [dmcaulay]
