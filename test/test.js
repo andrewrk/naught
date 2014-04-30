@@ -144,7 +144,7 @@ var steps = [
   {
     info: "ability to deploy and pass cwd",
     fn: function (cb) {
-      naughtExec(["deploy", "--cwd", path.resolve('./lib')], {}, function(stdout, stderr, code) {
+      naughtExec(["deploy", "--cwd", '../lib'], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
           "SpawnNew. booting: 1, online: 1, dying: 0, new_online: 0\n" +
           "NewOnline. booting: 0, online: 1, dying: 0, new_online: 1\n" +
