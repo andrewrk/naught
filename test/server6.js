@@ -10,6 +10,12 @@ server = http.createServer(function(req, resp) {
     server.close(function() {
       setTimeout(process.exit.bind(this, 0), 200);
     });
+  } else if (req.url === "/double-offline") {
+    process.send("offline");
+    resp.end("Not really going offline");
+    setTimeout(function() {
+      process.send("offline")
+    }, 200)
   }
 });
 
