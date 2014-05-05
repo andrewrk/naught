@@ -600,6 +600,59 @@ var steps = [
       });
     },
   },
+  rm(["naught.log", "stderr.log", "stdout.log"]),
+  {
+    info: "(test setup) start server6 up",
+    fn: function (cb) {
+      naughtExec(["start", "server.js"], {
+        PORT: PORT,
+        hi: "server6 says hi",
+      }, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
+        assertEqual(stdout, "workers online: 1\n")
+        assertEqual(code, 0)
+        cb();
+      });
+    }
+  },
+  get("(test setup) have server send offline message without dying", "/double-offline", "Not really going offline"),
+  {
+    info: "make sure double offline message only spawns one new server",
+    fn: function (cb) {
+      // Wait for the server to go send both offline messages
+      setTimeout(function() {
+        fs.readFile(path.join(test_root, "naught.log"), "utf8", function (err, contents) {
+          assertEqual(contents,
+            "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+            "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+            "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n" +
+            "Ready. booting: 0, online: 1, dying: 0, new_online: 0\n" +
+            "WorkerOffline. booting: 0, online: 0, dying: 1, new_online: 0\n" +
+            "SpawnNew. booting: 1, online: 0, dying: 1, new_online: 0\n" +
+            "WorkerOnline. booting: 0, online: 1, dying: 1, new_online: 0\n" +
+            "Ready. booting: 0, online: 1, dying: 1, new_online: 0\n"
+                     );
+          cb();
+        });
+      }, 600);
+    },
+  },
+  {
+    info: "(test setup) stopping server",
+    fn: function (cb) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "ShutdownOld. booting: 0, online: 0, dying: 2, new_online: 0\n" +
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
