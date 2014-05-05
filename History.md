@@ -1,3 +1,7 @@
+1.3.1 / 2014-05-05
+==================
+  * prevent dying workers from sending offline message. Thanks [mathrawka]
+
 1.3.0 / 2014-04-30
 ==================
   * resolve cwd path in main naught script. Thanks [dmcaulay]
