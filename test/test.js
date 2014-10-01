@@ -49,6 +49,33 @@ var steps = [
     },
   },
   {
+    info: "should remove an existing ipc file and startup if asked to",
+    fn: function(cb) {
+      var ipcFile = path.join(test_root, "tmp.ipc")
+      fs.writeFileSync(ipcFile, "fake")
+      naughtExec(["start", "--ipc-file", ipcFile, "--remove-old-ipc", "true", "server.js"], {},
+          function(stdout, stderr, code)
+      {
+        assertEqual(stderr,
+          "unable to connect to ipc-file `" + ipcFile + "`\n\n" +
+          "removing the ipc-file and attempting to continue\n" +
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
+        assertEqual(stdout, "workers online: 1\n");
+        assertEqual(code, 0);
+        cb();
+      });
+    },
+  },
+  {
+    info: "stop the server",
+    fn: function(cb) {
+      naughtExec(["stop", path.join(test_root, "tmp.ipc")], {}, cb)
+    }
+  },
+  rm(["naught.log", "stderr.log", "stdout.log"]),
+  {
     info: "ability to start a server",
     fn: function (cb) {
       naughtExec(["start", "server.js"], {
@@ -72,26 +99,6 @@ var steps = [
         assertEqual(stderr, "");
         assertEqual(stdout, "workers online: 1\n");
         assertEqual(code, 1);
-        cb();
-      });
-    },
-  },
-  {
-    info: "should remove an existing ipc file and startup if asked to",
-    fn: function(cb) {
-      var ipcFile = path.resolve(process.cwd(), "tmp.ipc")
-      fs.writeFileSync(ipcFile, "fake")
-      naughtExec(["start", "--ipc-file", ipcFile, "--remove-old-ipc", "true", "server.js"], {},
-          function(stdout, stderr, code)
-      {
-        assertEqual(stderr,
-          "unable to connect to ipc-file `" + ipcFile + "`\n\n" +
-          "removing the ipc-file and attempting to continue\n" +
-          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
-          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
-          "NewOnline. booting: 0, online: 0, dying: 0, new_online: 1\n");
-        assertEqual(stdout, "workers online: 1\n");
-        assertEqual(code, 0);
         cb();
       });
     },
