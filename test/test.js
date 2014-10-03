@@ -173,12 +173,12 @@ var steps = [
     },
   },
   {
-    info: "stopping a server twice prints helpful output",
+    info: "stopping a server twice prints helpful output and exits with code 0",
     fn: function (cb) {
       naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stdout, "");
         assertEqual(stderr, "server not running\n");
-        assertEqual(code, 1)
+        assertEqual(code, 0);
         cb();
       });
     },
