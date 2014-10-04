@@ -1,3 +1,8 @@
+1.4.0 / 2014-10-04
+==================
+  * stopping a service that is not running is not an error. Thanks [ross-p]
+  * add a `--remove-old-ipc` option to start. Thanks [bryce-gibson]
+
 1.3.1 / 2014-05-05
 ==================
   * prevent dying workers from sending offline message. Thanks [mathrawka]
