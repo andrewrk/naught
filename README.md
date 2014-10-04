@@ -193,12 +193,14 @@ CLI:
 
         --worker-count 1
         --ipc-file naught.ipc
+        --pid-file naught.pid
         --log naught.log
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
         --cwd .
         --daemon-mode true
+        --remove-old-ipc false
         --node-args ''
 
 
@@ -216,6 +218,7 @@ CLI:
         Available options and their defaults:
 
             --timeout none
+            --pid-file naught.pid
 
 
     naught status [ipc-file]
@@ -284,11 +287,12 @@ CLI:
 
         Uses `naught.ipc` by default.
 
+
     naught version
 
         Prints the version of naught and exits.
 
+
     naught help [cmd]
 
         Displays help for cmd.
-
