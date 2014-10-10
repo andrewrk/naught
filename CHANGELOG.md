@@ -1,3 +1,8 @@
+1.4.1 / 2014-10-10
+==================
+  * exit with failure error code when failed to boot
+  * update dependencies
+
 1.4.0 / 2014-10-04
 ==================
   * stopping a service that is not running is not an error. Thanks [ross-p]
