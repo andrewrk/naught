@@ -682,6 +682,23 @@ var steps = [
     },
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
+  use("server7.js"),
+  {
+    info: "should exit with error code when fail to start server",
+    fn: function(cb) {
+      naughtExec(["start", "server.js"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+          "Bootup. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "SpawnNew. booting: 1, online: 0, dying: 0, new_online: 0\n" +
+          "NewDeath. booting: 0, online: 0, dying: 0, new_online: 0\n" +
+          "The server crashed without booting. Check stderr.log.\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 1);
+        cb();
+      });
+    },
+  },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 var stepCount = steps.length;
