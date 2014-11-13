@@ -11,6 +11,7 @@ Features:
  * Clustering - take advantage of multiple CPU cores
  * Properly handles SIGTERM and SIGHUP for integration with service wrappers
  * Supports POSIX operating systems (does not support Windows)
+ * Supports using sockets opened by systemd or launchd
 
 Usage:
 ------
@@ -131,7 +132,6 @@ If you want to deploy on a restricted port such as 80 or 443 without sudo, try
 Note that there are 3 layers of process spawning between the naught CLI
 and your server. So you'll want to use the `--deep` option with authbind.
 
-
 Using a service wrapper:
 ------------------------
 
@@ -159,6 +159,73 @@ When you run with `--daemon-mode false`, the process tree looks like this:
      * worker 1
      * worker 2
      * etc
+
+Using a socket from systemd or launchd
+--------------------------------------
+
+When using naught from systemd or launchd, you must use `--daemon-mode false`.
+
+systemd and launchd can be configured to listen on a port and launch naught
+when a connection is detected on that port. The intention is that your server
+will only run when it is actually needed. systemd or launchd will provide the
+open socket to naught on a file descriptor, and naught will pass that file
+descriptor on to your server as it launches it. naught will set the
+`LISTEN_FD` environment variable to the number of the file descriptor on
+which your server should listen, which it could do like this:
+
+   ```js
+   server.listen(process.env.LISTEN_FD ? {fd: parseInt(process.env.LISTEN_FD, 10)} : (process.env.PORT || 8000));
+   ```
+
+naught automatically detects if it was launched by systemd and passes the
+socket along. For use from launchd, pass the `--launchd-socket` flag when
+starting naught, and provide the name of the key you defined in the Sockets
+dictionary in your server's launchd plist. Here is a sample plist:
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+     <dict>
+       <key>EnvironmentVariables</key>
+       <dict>
+         <key>NODE_ENV</key>
+         <string>production</string>
+         <key>PATH</key>
+         <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+       </dict>
+       <key>Label</key>
+       <string>com.example.myserver</string>
+       <key>ProgramArguments</key>
+       <array>
+         <string>/usr/local/bin/node</string>
+         <string>node_modules/.bin/naught</string>
+         <string>start</string>
+         <string>--daemon-mode</string>
+         <string>false</string>
+         <string>--launchd-socket</string>
+         <string>Listeners</string>
+         <string>server.js</string>
+       </array>
+       <key>Sockets</key>
+       <dict>
+         <key>Listeners</key>
+         <dict>
+           <key>SockFamily</key>
+           <string>IPv4v6</string>
+           <key>SockServiceName</key>
+           <integer>8000</integer>
+         </dict>
+       </dict>
+       <key>WorkingDirectory</key>
+       <string>/opt/myserver</string>
+     </dict>
+   </plist>
+   ```
+
+If you want to pass a socket in a file descriptor to naught started from some
+process other than systemd or launchd, you can set the LISTEN_FD environment
+variable to the file descriptor number when you launch naught.
 
 CLI:
 ----
@@ -202,6 +269,7 @@ CLI:
         --daemon-mode true
         --remove-old-ipc false
         --node-args ''
+        --launchd-socket ''
 
 
     naught stop [options] [ipc-file]
