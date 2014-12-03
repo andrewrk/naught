@@ -7,7 +7,7 @@ var spawn = require('child_process').spawn;
 var fork = require('child_process').fork;
 var path = require("path");
 var assert = require("assert");
-var async = require("async");
+var Pend = require("pend");
 var zlib = require('zlib');
 var assertDeepEqual = require('whynoteq').assertDeepEqual;
 var fs = require('fs');
@@ -787,30 +787,36 @@ function naughtExec(args, env, cb) {
 function collectLogFiles(test_path, cb) {
   fs.readdir(path.join(test_root, test_path), function (err, files) {
     if (err) return cb(err);
-    files.sort()
+    files.sort();
     if (! /\.gz$/.test(files[0])) {
       files.push(files.shift());
     }
-    async.map(files, function (file, cb) {
-      fs.readFile(path.join(test_root, test_path, file), function (err, data) {
-        if (err) return cb(err);
-        if (/\.gz$/.test(file)) {
-          zlib.gunzip(data, function (err, data) {
-            if (err) return cb(err);
-            cb(null, {file: file, data: data});
-          });
-        } else {
-          cb(null, {file: file, data: data});
-        }
+    var pend = new Pend();
+    var results;
+    files.forEach(function(file) {
+      pend.go(function(cb) {
+        fs.readFile(path.join(test_root, test_path, file), function (err, data) {
+          if (err) return cb(err);
+          if (/\.gz$/.test(file)) {
+            zlib.gunzip(data, function (err, data) {
+              if (err) return cb(err);
+              results = {file: file, data: data};
+              cb();
+            });
+          } else {
+            results = {file: file, data: data};
+            cb();
+          }
+        });
       });
-    }, function (err, results) {
+    });
+    pend.wait(function(err) {
       if (err) return cb(err);
-      var full_data;
-      full_data = "";
+      var fullData = "";
       results.forEach(function(item) {
-        full_data += item.data.toString();
+        fullData += item.data.toString();
       });
-      cb(null, results, full_data);
+      cb(null, results, fullData);
     });
   });
 }
@@ -837,9 +843,11 @@ function rm(files) {
   return {
     info: "(test setup) rm " + files.join(" "),
     fn: function (cb) {
-      async.forEach(files, function (item, cb) {
-        fs.unlink(path.join(test_root, item), cb);
-      }, cb);
+      var pend = new Pend();
+      files.forEach(function(file) {
+        fs.unlink(path.join(test_root, file), pend.hold());
+      });
+      pend.wait(cb);
     },
   }
 }
@@ -848,9 +856,11 @@ function remove(files) {
   return {
     info: "(test setup) rm -rf " + files.join(" "),
     fn: function (cb) {
-      async.forEach(files, function (item, cb) {
-        rimraf(path.join(test_root, item), cb);
-      }, cb);
+      var pend = new Pend();
+      files.forEach(function(file) {
+        rimraf(path.join(test_root, file), pend.hold());
+      });
+      pend.wait(cb);
     },
   }
 }
