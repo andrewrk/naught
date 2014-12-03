@@ -252,6 +252,7 @@ CLI:
 
         `worker-count` can be used to change the number of workers running. A
         value of `0` means to keep the same number of workers.
+        A value of 'auto', will set value as per the number of available CPUs.
 
         `cwd` can be used to change the cwd directory of the master process.
         This allows you to release in different directories. Unfortunately,
