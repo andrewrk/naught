@@ -1,3 +1,8 @@
+1.5.0 / 2014-12-04
+==================
+  * 'auto' option for using number of cpus as worker count. Thanks AvnerCohen
+  * avoid executing os.cpus() unless 'auto' option is set
+
 1.4.1 / 2014-10-10
 ==================
   * exit with failure error code when failed to boot
