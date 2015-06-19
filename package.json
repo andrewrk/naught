@@ -26,12 +26,12 @@
     "node": ">=0.10.20"
   },
   "devDependencies": {
-    "ncp": "~1.0.1",
-    "rimraf": "~2.2.8",
+    "ncp": "~2.0.0",
+    "rimraf": "~2.4.0",
     "whynoteq": "~1.0.2"
   },
   "dependencies": {
-    "mkdirp": "~0.5.0",
+    "mkdirp": "~0.5.1",
     "pend": "~1.2.0"
   },
   "bugs": {
