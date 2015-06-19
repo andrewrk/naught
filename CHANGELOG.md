@@ -1,3 +1,9 @@
+1.5.1 / 2015-06-19
+==================
+  * Fix assertion error. Thanks Quentin Barbe.
+  * Fix shutdown message not always received. Thanks bryce-gibson.
+  * Update dependencies.
+
 1.5.0 / 2014-12-04
 ==================
   * 'auto' option for using number of cpus as worker count. Thanks AvnerCohen
