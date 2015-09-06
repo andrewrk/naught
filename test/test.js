@@ -781,41 +781,6 @@ var steps = [
     }
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js", "tmp"]),
-  use("server10.js"),
-  {
-    info: "Should expose worker number via process.env.NAUGHT_WORKER",
-    fn: function(cb) {
-      naughtExec(["start","--worker-count", "4", "server.js"], {}, function(stdout, stderr, code) {
-        assertEqual(fs.readFileSync("./test/stdout.log", "UTF8").split('\n').sort().splice(1).join('\n'),
-          "worker #0\n"+
-          "worker #1\n"+
-          "worker #2\n"+
-          "worker #3");
-        assertEqual(code, 0);
-        cb();
-        assertEqual(fs.existsSync(path.join(test_root, "/tmp"), "utf8"), false)
-      });
-    }
-  },
-  {
-    info: "numbers should be consistent across deploys",
-    fn: function(cb) {
-      naughtExec(["deploy"], {}, function(stdout, stderr, code) {
-        assertEqual(fs.readFileSync("./test/stdout.log", "UTF8").split('\n').sort().splice(1).join('\n'),
-          "worker #0\n"+
-          "worker #0\n"+
-          "worker #1\n"+
-          "worker #1\n"+
-          "worker #2\n"+
-          "worker #2\n"+
-          "worker #3\n"+
-          "worker #3");
-        assertEqual(code, 0)
-        cb();
-      });
-    },
-  },
-  rm(["naught.log", "stderr.log", "stdout.log", "server.js"])
 ];
 
 var stepCount = steps.length;
