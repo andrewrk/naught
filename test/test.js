@@ -830,11 +830,11 @@ var steps = [
 	    "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
-        rm(["naught.log", "stderr.log", "stdout.log", "server.js"])
         cb();
       });
     },
   },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 var stepCount = steps.length;
