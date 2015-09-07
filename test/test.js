@@ -781,6 +781,60 @@ var steps = [
     }
   },
   rm(["naught.log", "stderr.log", "stdout.log", "server.js", "tmp"]),
+  use("server10.js"),
+  {
+    info: "Should expose worker number via process.env.NAUGHT_WORKER",
+    fn: function(cb) {
+      naughtExec(["start","--worker-count", "4", "server.js"], {}, function(stdout, stderr, code) {
+        assertEqual(fs.readFileSync("./test/stdout.log", "UTF8").split('\n').sort().splice(1).join('\n'),
+          "worker #0\n"+
+          "worker #1\n"+
+          "worker #2\n"+
+          "worker #3");
+        assertEqual(code, 0);
+        cb();
+        assertEqual(fs.existsSync(path.join(test_root, "/tmp"), "utf8"), false)
+      });
+    }
+  },
+  {
+    info: "numbers should be consistent across deploys",
+    fn: function(cb) {
+      naughtExec(["deploy"], {}, function(stdout, stderr, code) {
+        assertEqual(fs.readFileSync("./test/stdout.log", "UTF8").split('\n').sort().splice(1).join('\n'),
+          "worker #0\n"+
+          "worker #0\n"+
+          "worker #1\n"+
+          "worker #1\n"+
+          "worker #2\n"+
+          "worker #2\n"+
+          "worker #3\n"+
+          "worker #3");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  {
+    info: "(test setup) stopping server",
+    fn: function (cb) {
+      naughtExec(["stop"], {}, function(stdout, stderr, code) {
+        assertEqual(stderr,
+	    "ShutdownOld. booting: 0, online: 3, dying: 1, new_online: 0\n"+
+	    "ShutdownOld. booting: 0, online: 2, dying: 2, new_online: 0\n"+
+	    "ShutdownOld. booting: 0, online: 1, dying: 3, new_online: 0\n"+
+	    "ShutdownOld. booting: 0, online: 0, dying: 4, new_online: 0\n"+
+	    "OldExit. booting: 0, online: 0, dying: 3, new_online: 0\n"+
+	    "OldExit. booting: 0, online: 0, dying: 2, new_online: 0\n"+
+	    "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n"+
+	    "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
+        assertEqual(stdout, "");
+        assertEqual(code, 0)
+        cb();
+      });
+    },
+  },
+  rm(["naught.log", "stderr.log", "stdout.log", "server.js"]),
 ];
 
 var stepCount = steps.length;
