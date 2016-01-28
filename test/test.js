@@ -41,7 +41,11 @@ var steps = [
       naughtExec(["start", "--ipc-file", "/invalid/path/foo.ipc", "server.js"], {},
           function(stdout, stderr, code)
       {
-        assertEqual(stderr, "unable to start daemon: EACCES, mkdir '/invalid'\n");
+        var errorMessages = {
+            "unable to start daemon: EACCES: permission denied, mkdir '/invalid'\n": true,
+            "unable to start daemon: EACCES, mkdir '/invalid'\n": true
+	}
+        assert(errorMessages[stderr]);
         assertEqual(stdout, "");
         assertEqual(code, 1);
         cb();
