@@ -151,6 +151,7 @@ When you run with `--daemon-mode false`, the process tree looks like this:
         --stdout stdout.log
         --stderr stderr.log
         --max-log-size 10485760
+        --log-compression-format gzip
         --cwd .
         --daemon-mode true
         --remove-old-ipc false
