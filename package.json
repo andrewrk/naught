@@ -10,11 +10,12 @@
     "daemon",
     "daemonize"
   ],
+  "main": "lib/main.js",
   "scripts": {
     "test": "node test/test.js"
   },
   "bin": {
-    "naught": "./bin/naught"
+    "naught": "bin/naught"
   },
   "repository": {
     "type": "git",
