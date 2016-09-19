@@ -41,7 +41,9 @@ var steps = [
       naughtExec(["start", "--ipc-file", "/invalid/path/foo.ipc", "server.js"], {},
           function(stdout, stderr, code)
       {
-        assertEqual(stderr, "unable to start daemon: EACCES, mkdir '/invalid'\n");
+        assert(
+          stderr.match(/unable to start daemon: EACCES.* mkdir '\/invalid'/),
+          'Unexpected stderr output: ' + stderr);
         assertEqual(stdout, "");
         assertEqual(code, 1);
         cb();
@@ -820,14 +822,14 @@ var steps = [
     fn: function (cb) {
       naughtExec(["stop"], {}, function(stdout, stderr, code) {
         assertEqual(stderr,
-	    "ShutdownOld. booting: 0, online: 3, dying: 1, new_online: 0\n"+
-	    "ShutdownOld. booting: 0, online: 2, dying: 2, new_online: 0\n"+
-	    "ShutdownOld. booting: 0, online: 1, dying: 3, new_online: 0\n"+
-	    "ShutdownOld. booting: 0, online: 0, dying: 4, new_online: 0\n"+
-	    "OldExit. booting: 0, online: 0, dying: 3, new_online: 0\n"+
-	    "OldExit. booting: 0, online: 0, dying: 2, new_online: 0\n"+
-	    "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n"+
-	    "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
+          "ShutdownOld. booting: 0, online: 3, dying: 1, new_online: 0\n"+
+          "ShutdownOld. booting: 0, online: 2, dying: 2, new_online: 0\n"+
+          "ShutdownOld. booting: 0, online: 1, dying: 3, new_online: 0\n"+
+          "ShutdownOld. booting: 0, online: 0, dying: 4, new_online: 0\n"+
+          "OldExit. booting: 0, online: 0, dying: 3, new_online: 0\n"+
+          "OldExit. booting: 0, online: 0, dying: 2, new_online: 0\n"+
+          "OldExit. booting: 0, online: 0, dying: 1, new_online: 0\n"+
+          "OldExit. booting: 0, online: 0, dying: 0, new_online: 0\n");
         assertEqual(stdout, "");
         assertEqual(code, 0)
         cb();
