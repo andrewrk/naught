@@ -1,5 +1,5 @@
 {
-  "name": "@nuso/naught",
+  "name": "@nuso.io/naught",
   "version": "1.6.1",
   "description": "zero downtime deployment for your node.js server",
   "keywords": [
@@ -10,9 +10,6 @@
     "daemon",
     "daemonize"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/nuso"
-  },
   "scripts": {
     "test": "node test/test.js"
   },
