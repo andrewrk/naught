@@ -10,6 +10,9 @@
     "daemon",
     "daemonize"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/nuso"
+  },
   "scripts": {
     "test": "node test/test.js"
   },
