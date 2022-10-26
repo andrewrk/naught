@@ -1,5 +1,5 @@
 {
-  "name": "naught",
+  "name": "@nuso/naught",
   "version": "1.6.1",
   "description": "zero downtime deployment for your node.js server",
   "keywords": [
